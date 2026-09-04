@@ -42,14 +42,15 @@ $appVersion = ($versionLine -split '\+')[0]
 $buildNumber = if ($versionLine -match '\+') { [int](($versionLine -split '\+')[1]) } else { 0 }
 
 # file -> manifest key. The app picks its own platform from these keys; the
-# portable zip ships on the release but is not in the manifest because a
-# portable copy cannot self-install.
+# portable zip and the per-ABI split APKs ship on the release but are not in
+# the manifest: a portable copy cannot self-install, and the updater installs
+# exactly one universal APK.
 $patterns = [ordered]@{
   'windows' = "Forelasning-$appVersion-windows-x64-setup.exe"
   'android' = "Forelasning-$appVersion-android-universal.apk"
   'linux'   = "forelasning_${appVersion}-*_amd64.deb"
-  'zip'     = "Forelasning-$appVersion-windows-x64.zip"   # release-only, not in the manifest
-  'split'   = "Forelasning-$appVersion-android-*.apk"      # release-only (universal is manifest key 'android'), excludes 'universal'
+  'zip'     = "Forelasning-$appVersion-windows-x64.zip"
+  'splits'  = "Forelasning-$appVersion-android-*[0-9a]).apk"
 }
 
 $manifestArtifacts = [ordered]@{}
@@ -59,6 +60,11 @@ foreach ($key in $patterns.Keys) {
   $pattern = $patterns[$key]
   $files = @(Get-ChildItem $dist -Filter $pattern -File -ErrorAction SilentlyContinue)
   if (-not $files) {
+    if (Test-Path (Join-Path $dist $pattern)) {
+      $files = @(Get-Item (Join-Path $dist $pattern))
+    }
+  }
+  if (-not $files) {
     if ($key -in @('windows', 'android', 'linux')) {
       Write-Warning "No $key artifact in dist\ matching $pattern - manifest will lack $key."
     }
@@ -66,10 +72,7 @@ foreach ($key in $patterns.Keys) {
   }
   foreach ($file in $files) {
     $releaseFiles.Add($file.FullName)
-    if ($key -eq 'zip' -or ($key -eq 'split' -and $file.Name -like '*universal*')) {
-      continue
-    }
-    if ($manifestArtifacts.Contains($key)) {
+    if ($key -notin @('windows', 'android', 'linux')) {
       continue
     }
     $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
@@ -127,7 +130,7 @@ if ($LASTEXITCODE -eq 0) {
 $releaseArgs = @(
   'release', 'create', $tag,
   '--repo', $Repo,
-  '--title', "Forelasning $appVersion",
+  '--title', "Forelasning $appVersion"
 )
 if ($Notes) {
   $releaseArgs += @('--notes', $Notes)

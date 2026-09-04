@@ -178,16 +178,25 @@ of it shows up when you just launch the app and look at the home screen.
 The app updates itself (Windows, Android, Linux; macOS gets a download +
 Finder reveal, iOS none). The feed is the same GitHub repo's releases:
 `https://github.com/klovaaxel/local-transcription/releases/latest/download/updates.json`
-always points at the newest release. Publish flow:
+always points at the newest release. Two publish paths from the same pieces:
 
-1. Bump `version:` in `pubspec.yaml` (Android needs the `+build` strictly
-   increasing; the tag comes out as `v<version>`).
-2. Build: `tool/package/build_windows.ps1`, `tool/package/build_android.ps1`
-   (also builds a universal APK -- the file the updater installs),
-   `wsl -d Ubuntu -- bash tool/package/build_linux_deb.sh`.
-3. Publish: `pwsh -File tool/package/publish_update.ps1` -- hashes the dist\
-   artifacts into `updates.json` and `gh release create`s the tag. Needs `gh`
-   authed as klovaaxel.
+**GitHub Action (preferred).** Bump `version:` in `pubspec.yaml` (Android
+needs the `+build` strictly increasing), commit, push a tag `v<version>` --
+or run the workflow from the Actions tab. `.github/workflows/publish.yml`
+builds Windows (Inno), Android (needs secrets ANDROID_KEYSTORE_BASE64,
+ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD mapped
+from android/key.properties + the keystores' base64), and Linux (includes
+the docker `.deb` verify), then collects everything into
+`tool/package/publish_update.ps1`'s manifest and `gh release create`s the
+tag. Never builds locally for a release unless debugging.
+
+**Local builds (debugging a package).** `tool/package/build_windows.ps1`,
+`tool/package/build_android.ps1` (also builds a universal APK -- the file the
+updater installs), `wsl -d Ubuntu -- bash tool/package/build_linux_deb.sh`,
+then `pwsh -File tool/package/publish_update.ps1 [-Notes ...] [-WhatIf]` to
+hash dist\ into `updates.json` and create the release. Needs `gh` authed as
+klovaaxel. `verify_deb.sh`/`verify_deb_docker.sh` check an installed .deb;
+the docker variant is exactly what CI runs.
 
 In-app: `lib/update/` (feed + downloader + installers), state in
 `app_state.dart` (`_autoUpdateCheck` after 8s, silent, skipped while
