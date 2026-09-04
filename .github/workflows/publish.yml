@@ -90,12 +90,14 @@ jobs:
         run: |
           VERSION=$(grep -oP '^version:\s*\K.+' pubspec.yaml | cut -d+ -f1)
           mkdir -p dist
-          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+          # Split builds produce app-<abi>-release.apk; the plain build's
+          # app-release.apk carries no ABI segment - note the glob must not
+          # exclude it, which app-*-release.apk does.
+          for apk in build/app/outputs/flutter-apk/app-*.apk; do
             base=$(basename "$apk" .apk)
             case "$base" in
               app-release)
-                # No ABI segment - this is the universal build that the
-                # self-updater installs.
+                # Universal build - the one the self-updater installs.
                 cp "$apk" "dist/Forelasning-$VERSION-android-universal.apk" ;;
               *)
                 abi=${base#app-}; abi=${abi%-release}
