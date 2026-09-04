@@ -1,0 +1,44 @@
+{
+  "title": "Approve a composition",
+  "question": "Närvarostämpeln is locked. Which first-screen composition should the Flutter build match?",
+  "options": [
+    {
+      "id": "comp-stamp-hero",
+      "label": "Stamp as the lecture",
+      "kicker": "FROM THE ROLL",
+      "thesis": "The circular date stamp is the session. Three form rows. One copy action.",
+      "palette": ["#D5DCD4", "#1546C4", "#1A2B4A", "#F4F6F3"],
+      "materials": ["rubber stamp", "form paper", "hairline rules"],
+      "viewport": "Phone brief: huge circular 1 SEPT stamp, three municipal rows, Kopiera till skolplattformen.",
+      "risk": "The stamp can steal space from the brief you actually copy.",
+      "comp": ".impeccable/mocks/comp-stamp-hero.png"
+    },
+    {
+      "id": "comp-band",
+      "label": "Stamp as a header band",
+      "thesis": "A rectangular ink band names the lecture; the brief reads as one letter; copy lives in the thumb zone.",
+      "palette": ["#D5DCD4", "#1546C4", "#1A2B4A", "#F4F6F3"],
+      "materials": ["rectangular stamp", "letter column", "thumb-zone ink bar"],
+      "viewport": "Full-width date band, continuous three-block letter, Kopiera bar at the bottom.",
+      "risk": "Reads closer to a generic form if the band is just a colored header.",
+      "comp": ".impeccable/mocks/comp-band.png"
+    },
+    {
+      "id": "comp-ritual",
+      "label": "Just stamped",
+      "thesis": "Most of the screen is the press of the stamp; the brief is a carbon slip you pick up after.",
+      "palette": ["#D5DCD4", "#1546C4", "#1A2B4A", "#F4F6F3"],
+      "materials": ["wet ink halo", "carbon-copy slip", "circular Kopiera pad"],
+      "viewport": "Top half empty paper and a huge stamp; bottom half a short three-line slip and a circular Kopiera.",
+      "risk": "Beautiful ritual, less brief on screen — desk users may want more text.",
+      "comp": ".impeccable/mocks/comp-ritual.png"
+    }
+  ],
+  "reroll": false,
+  "canon": false,
+  "steer": true,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  }
+}

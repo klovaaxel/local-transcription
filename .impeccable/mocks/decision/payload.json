@@ -1,0 +1,144 @@
+{
+  "title": "Choose the visual world",
+  "question": "The roll assigned Närvarostämpeln. Keep it, take an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Närvarostämpeln",
+      "kicker": "THE ROLL",
+      "lineage": "Swedish classroom attendance stamp and närvarolista",
+      "thesis": "A lecture is real when it has been stamped: date first, then a three-line brief ready to copy into the school platform.",
+      "palette": ["#D5DCD4", "#1546C4", "#1A2B4A", "#F4F6F3", "#6E7A72"],
+      "materials": ["rubber stamp", "wet ultramarine ink pad", "municipal form paper", "hairline register grid"],
+      "viewport": "Phone: a cool gray-green form fills the screen. A large circular wet-ink date stamp is the lecture. Three brief rows sit under it. One action: Kopiera till skolplattformen. Delete is nowhere near it.",
+      "risk": "If the stamp is a logo instead of the session itself, it becomes decoration on another notes app.",
+      "raised": [
+        { "from": "challenger-developer-console", "raise": "Destructive delete sits alone with empty space around it, never beside copy." },
+        { "from": "challenger-iridescent-cloud", "raise": "Stamp blue lives only on the mark and the primary action; the brief body stays dry ink on form paper." },
+        { "from": "challenger-gravity-rain", "raise": "Each screen has one gravity: record, or copy, never both." },
+        { "from": "challenger-type-specimen", "raise": "Rank is scale: the stamp and date are monumental; labels stay one size." }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "Veckobrevet",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "The weekly parent letter Swedish teachers already write",
+      "thesis": "The app is tomorrow’s veckobrev: one A4-shaped sheet, three short blocks, copy the whole letter.",
+      "palette": ["#F7F7F5", "#2C2C2C", "#2F5A8C", "#E4E4E0"],
+      "materials": ["photocopy toner", "school letterhead bar", "A4 measure"],
+      "viewport": "Phone: a white photocopied letter. School-blue header with date. Three headed paragraphs. One action: Kopiera brevet.",
+      "risk": "Also the direction most runs in this category land on: the artifact they already make, rendered as an app.",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-terminal-yellow-wayfinding",
+      "label": "Nästa beslut",
+      "verdict": "competitive",
+      "lineage": "Airport terminal yellow wayfinding",
+      "thesis": "The teacher only ever sees the next decision: start, stop, or copy — one yellow band, one message.",
+      "palette": ["#F5C400", "#111111", "#FFFFFF", "#1A1A1A"],
+      "materials": ["enamel sign panel", "black humanist sans", "white pictogram tile"],
+      "viewport": "Phone: a saturated yellow band hangs at the top with one instruction. Gate-scale clock or Kopiera. No second action on screen.",
+      "case": "Wins product clarity: the job is a chain of single decisions. Loses identification: Schiphol yellow is not a Swedish classroom.",
+      "risk": "Reads as a transit app if the yellow band is decoration instead of the only instruction.",
+      "comp": ".impeccable/mocks/decision/challenger-terminal-yellow-wayfinding.png",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding.webp"
+    },
+    {
+      "id": "challenger-cutting-bench",
+      "label": "Klippbänken",
+      "verdict": "competitive",
+      "lineage": "Film cutting bench select rail",
+      "thesis": "Lectures are frames on a perforated rail; the one you stopped on wears an orange tape flag; the brief hangs below as trims.",
+      "palette": ["#111111", "#FF6A00", "#F4E6C8", "#2A2A2A"],
+      "materials": ["coarse film grain", "orange tape flag", "punched frame windows"],
+      "viewport": "Phone: a black grain field. A horizontal perforated rail of dated lecture frames. Orange flag on today. Three brief trims pinned under the rail. Kopiera is a tape band.",
+      "case": "Holds clarity: a lecture is a cut you can mark and copy. Loses identification: teachers do not live at a cutting bench.",
+      "risk": "Orange-on-black can shout cinema instead of school if the frames are not dated lectures.",
+      "comp": ".impeccable/mocks/decision/challenger-cutting-bench.png",
+      "hero": "https://impeccable.style/worlds/cards/operate-a-cutting-bench-select-rail-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/operate-a-cutting-bench-select-rail.webp"
+    },
+    {
+      "id": "challenger-developer-console",
+      "label": "Grafitkonsolen",
+      "verdict": "declined",
+      "lineage": "Dark-first developer console",
+      "thesis": "Sessions as persistent graphite panels; copy is the only accent; delete sits in empty space.",
+      "palette": ["#1C1E22", "#2A2D33", "#C8CCD2", "#E8C547"],
+      "materials": ["graphite panels", "hairline seams", "syntax accent"],
+      "viewport": "Phone: dark tiled panels. Transcript in one pane, brief in another. Isolated delete.",
+      "case": "Loses both axes: teachers do not identify with an IDE, and a console hides the copy-ready brief.",
+      "kept": "Destructive actions isolated by empty space.",
+      "risk": "Looks like a developer tool, not a classroom witness.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console.webp"
+    },
+    {
+      "id": "challenger-iridescent-cloud",
+      "label": "Molnkanten",
+      "verdict": "declined",
+      "lineage": "Iridescent cloud edge",
+      "thesis": "A plain paper field; color only as a thin fringe on the live recording.",
+      "palette": ["#F4F6F8", "#4A5560", "#9BE7C8", "#E8A0C0"],
+      "materials": ["cloud white", "hairline spectral edge"],
+      "viewport": "Phone: wide white margins, achromatic brief, a mint-rose fringe only while recording.",
+      "case": "Loses both axes: cloud optics are not a teacher’s world, and a fringe does not explain the brief.",
+      "kept": "Color confined to an edge; the text field stays achromatic.",
+      "risk": "Pretty weather, no school job.",
+      "hero": "https://impeccable.style/worlds/cards/clouds-storms-auroras-iridescent-cloud-edge-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/clouds-storms-auroras-iridescent-cloud-edge.webp"
+    },
+    {
+      "id": "challenger-gravity-rain",
+      "label": "Regnträdgården",
+      "verdict": "declined",
+      "lineage": "Gravity-rain garden",
+      "thesis": "Each screen pulls toward one destination: the record button, or the copy action.",
+      "palette": ["#3D4A3A", "#6B8F71", "#2B4C7E", "#8B2E2E"],
+      "materials": ["dusk garden", "directional rain"],
+      "viewport": "Phone: one dominant pull toward Spela in or Kopiera; everything else falls toward it.",
+      "case": "Loses both axes: surreal gravity is not a classroom, and rain laws obscure the brief.",
+      "kept": "One gravity dominant per screen.",
+      "risk": "Fantasy weather on a teacher tool.",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-gravity-rain-garden-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-gravity-rain-garden.webp"
+    },
+    {
+      "id": "challenger-type-specimen",
+      "label": "Typsnittet",
+      "verdict": "declined",
+      "lineage": "Interactive type specimen",
+      "thesis": "The date and the brief are the specimen: huge date, tiny labels, hierarchy by scale alone.",
+      "palette": ["#F7F5F0", "#111111", "#C45C26"],
+      "materials": ["near-white paper", "ink black", "foundry accent"],
+      "viewport": "Phone: a giant date. Three short brief lines. A tiny Kopiera label.",
+      "case": "Loses both axes: a foundry specimen is not a teacher’s ritual, and scale-only can hide the copy action.",
+      "kept": "Hierarchy by scale contrast alone.",
+      "risk": "Looks like a font website.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/variable-font-specimen.webp"
+    }
+  ],
+  "reroll": {
+    "registers": ["safer", "bolder"]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A calm voice-memo app with a waveform, a transcript, and an AI summary card — executed at full craft.",
+    "palette": ["#FFFFFF", "#111827", "#2563EB"],
+    "materials": ["clean grid", "soft cards", "system sans"],
+    "viewport": "Phone: large record button, live waveform, session list of dated notes, summary underneath.",
+    "risk": "Indistinguishable from every other AI notes app, by design.",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

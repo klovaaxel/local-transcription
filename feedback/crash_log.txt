@@ -1,0 +1,555 @@
+           PID: 6504 (lecture_local)
+           UID: 1000 (kenneth)
+           GID: 1000 (kenneth)
+        Signal: 6 (ABRT)
+     Timestamp: Thu 2026-09-03 13:27:20 CEST (22s ago)
+  Command Line: /opt/forelasning/lecture_local
+    Executable: /opt/forelasning/lecture_local
+ Control Group: /user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.yakuake-6112.scope/tab(6120).scope
+          Unit: user@1000.service
+     User Unit: app-org.kde.yakuake-6112.scope
+         Slice: user-1000.slice
+     Owner UID: 1000 (kenneth)
+       Boot ID: bcd8c302384a4a60b833e3c9abd61f49
+    Machine ID: 12671650936e400a91e9bfc00b2d4b73
+      Hostname: keane
+       Storage: /var/lib/systemd/coredump/core.lecture_local.1000.bcd8c302384a4a60b833e3c9abd61f49.6504.1788434840000000.zst (present)
+  Size on Disk: 4.7G
+       Message: Process 6504 (lecture_local) of user 1000 dumped core.
+
+                Module libgomp.so.1 from deb gcc-14-14.2.0-4ubuntu2~24.04.1.amd64
+                Module libzstd.so.1 from deb libzstd-1.5.5+dfsg2-2build1.1.amd64
+                Module libsystemd.so.0 from deb systemd-255.4-1ubuntu8.17.amd64
+                Module libgcc_s.so.1 from deb gcc-14-14.2.0-4ubuntu2~24.04.1.amd64
+                Module libstdc++.so.6 from deb gcc-14-14.2.0-4ubuntu2~24.04.1.amd64
+                Stack trace of thread 30964:
+                #0  0x0000714df1c9ec0c __pthread_kill_implementation (libc.so.6 + 0x9ec0c)
+                #1  0x0000714df1c4527e __GI_raise (libc.so.6 + 0x4527e)
+                #2  0x0000714df1c288ff __GI_abort (libc.so.6 + 0x288ff)
+                #3  0x0000714d02f4ce4d ggml_abort (libggml-base.so.0 + 0x1ce4d)
+                #4  0x0000714ce4cff239 _ZN13llama_context6decodeERK11llama_batch (libllama.so + 0xff239)
+                #5  0x0000714ce4cff3d0 llama_decode (libllama.so + 0xff3d0)
+                #6  0x0000714d907e0921 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x628921)
+                #7  0x0000714d907e08c4 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x6288c4)
+                #8  0x0000714d907e24ed _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x62a4ed)
+                #9  0x0000714d907df2bd _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x6272bd)
+                #10 0x0000714d907de1ae _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x6261ae)
+                #11 0x0000714d907a4676 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x5ec676)
+                #12 0x0000714d90759264 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x5a1264)
+                #13 0x0000714d9071c627 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x564627)
+                #14 0x0000714d9071c523 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x564523)
+                #15 0x0000714d904d4ef4 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x31cef4)
+                #16 0x0000714d904d4d5b _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x31cd5b)
+                #17 0x0000714d907f3ad5 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x63bad5)
+                #18 0x0000714d907f22bc _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x63a2bc)
+                #19 0x0000714d907f8306 _kDartSnapshotText (/opt/forelasning/lib/libapp.so + 0x640306)
+                #20 0x0000714df408ff61 n/a (libflutter_linux_gtk.so + 0xe8ff61)
+                #21 0x0000714df409178a n/a (libflutter_linux_gtk.so + 0xe9178a)
+                #22 0x0000714df409c7ea n/a (libflutter_linux_gtk.so + 0xe9c7ea)
+                #23 0x0000714df40a2b74 n/a (libflutter_linux_gtk.so + 0xea2b74)
+                #24 0x0000714df40a2ec5 n/a (libflutter_linux_gtk.so + 0xea2ec5)
+                #25 0x0000714df411f9a7 n/a (libflutter_linux_gtk.so + 0xf1f9a7)
+                #26 0x0000714df411fc15 n/a (libflutter_linux_gtk.so + 0xf1fc15)
+                #27 0x0000714df40fca76 n/a (libflutter_linux_gtk.so + 0xefca76)
+                #28 0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #29 0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6510:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6520:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6519:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6529:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6528:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6518:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6526:
+                #0  0x0000714df1d2738d syscall (libc.so.6 + 0x12738d)
+                #1  0x0000714df23ee52d g_cond_wait (libglib-2.0.so.0 + 0xb652d)
+                #2  0x0000714df235f58b n/a (libglib-2.0.so.0 + 0x2758b)
+                #3  0x0000714df235f5ec g_async_queue_pop (libglib-2.0.so.0 + 0x275ec)
+                #4  0x0000714df22a30fb n/a (libpangoft2-1.0.so.0 + 0xc0fb)
+                #5  0x0000714df23c3e62 n/a (libglib-2.0.so.0 + 0x8be62)
+                #6  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #7  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6504:
+                #0  0x0000714df1d1b5fd __GI___poll (libc.so.6 + 0x11b5fd)
+                #1  0x0000714df23f48ce n/a (libglib-2.0.so.0 + 0xbc8ce)
+                #2  0x0000714df2394a23 g_main_context_iteration (libglib-2.0.so.0 + 0x5ca23)
+                #3  0x0000714df25cb89d g_application_run (libgio-2.0.so.0 + 0xe789d)
+                #4  0x000059ee3235d4be main (lecture_local + 0x24be)
+                #5  0x0000714df1c2a1ca __libc_start_call_main (libc.so.6 + 0x2a1ca)
+                #6  0x0000714df1c2a28b __libc_start_main_impl (libc.so.6 + 0x2a28b)
+                #7  0x000059ee3235d3c5 _start (lecture_local + 0x23c5)
+
+                Stack trace of thread 6521:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6513:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6509:
+                #0  0x0000714df1d1b5fd __GI___poll (libc.so.6 + 0x11b5fd)
+                #1  0x0000714df23f48ce n/a (libglib-2.0.so.0 + 0xbc8ce)
+                #2  0x0000714df2394a23 g_main_context_iteration (libglib-2.0.so.0 + 0x5ca23)
+                #3  0x0000714def878595 n/a (libdconfsettings.so + 0x7595)
+                #4  0x0000714df23c3e62 n/a (libglib-2.0.so.0 + 0x8be62)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6505:
+                #0  0x0000714df1d2738d syscall (libc.so.6 + 0x12738d)
+                #1  0x0000714df23ee52d g_cond_wait (libglib-2.0.so.0 + 0xb652d)
+                #2  0x0000714df235f58b n/a (libglib-2.0.so.0 + 0x2758b)
+                #3  0x0000714df23c4c43 n/a (libglib-2.0.so.0 + 0x8cc43)
+                #4  0x0000714df23c3e62 n/a (libglib-2.0.so.0 + 0x8be62)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6514:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6512:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6524:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6511:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6522:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6535:
+                #0  0x0000714df1d2a172 epoll_wait (libc.so.6 + 0x12a172)
+                #1  0x0000714df372fbc5 n/a (libflutter_linux_gtk.so + 0x52fbc5)
+                #2  0x0000714df3728ac3 n/a (libflutter_linux_gtk.so + 0x528ac3)
+                #3  0x0000714df372eff1 n/a (libflutter_linux_gtk.so + 0x52eff1)
+                #4  0x0000714df372eca3 n/a (libflutter_linux_gtk.so + 0x52eca3)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6537:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df36c6b9f n/a (libflutter_linux_gtk.so + 0x4c6b9f)
+                #3  0x0000714df3724e3e n/a (libflutter_linux_gtk.so + 0x524e3e)
+                #4  0x0000714df372552a n/a (libflutter_linux_gtk.so + 0x52552a)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6517:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6541:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6534:
+                #0  0x0000714df1d2a172 epoll_wait (libc.so.6 + 0x12a172)
+                #1  0x0000714df372fbc5 n/a (libflutter_linux_gtk.so + 0x52fbc5)
+                #2  0x0000714df3728ac3 n/a (libflutter_linux_gtk.so + 0x528ac3)
+                #3  0x0000714df372eff1 n/a (libflutter_linux_gtk.so + 0x52eff1)
+                #4  0x0000714df372eca3 n/a (libflutter_linux_gtk.so + 0x52eca3)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6532:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6507:
+                #0  0x0000714df1d1b5fd __GI___poll (libc.so.6 + 0x11b5fd)
+                #1  0x0000714df23f48ce n/a (libglib-2.0.so.0 + 0xbc8ce)
+                #2  0x0000714df2395f47 g_main_loop_run (libglib-2.0.so.0 + 0x5df47)
+                #3  0x0000714df25fe582 n/a (libgio-2.0.so.0 + 0x11a582)
+                #4  0x0000714df23c3e62 n/a (libglib-2.0.so.0 + 0x8be62)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6506:
+                #0  0x0000714df1d1b5fd __GI___poll (libc.so.6 + 0x11b5fd)
+                #1  0x0000714df23f48ce n/a (libglib-2.0.so.0 + 0xbc8ce)
+                #2  0x0000714df2394a23 g_main_context_iteration (libglib-2.0.so.0 + 0x5ca23)
+                #3  0x0000714df2394a79 n/a (libglib-2.0.so.0 + 0x5ca79)
+                #4  0x0000714df23c3e62 n/a (libglib-2.0.so.0 + 0x8be62)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6533:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6545:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6523:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6538:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df36c6b9f n/a (libflutter_linux_gtk.so + 0x4c6b9f)
+                #3  0x0000714df3724e3e n/a (libflutter_linux_gtk.so + 0x524e3e)
+                #4  0x0000714df372552a n/a (libflutter_linux_gtk.so + 0x52552a)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6539:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df36c6b9f n/a (libflutter_linux_gtk.so + 0x4c6b9f)
+                #3  0x0000714df3724e3e n/a (libflutter_linux_gtk.so + 0x524e3e)
+                #4  0x0000714df372552a n/a (libflutter_linux_gtk.so + 0x52552a)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6542:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6543:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6544:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6527:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6571:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6549:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6547:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6530:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6525:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6516:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6536:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df36c6b9f n/a (libflutter_linux_gtk.so + 0x4c6b9f)
+                #3  0x0000714df3724e3e n/a (libflutter_linux_gtk.so + 0x524e3e)
+                #4  0x0000714df372552a n/a (libflutter_linux_gtk.so + 0x52552a)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6550:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 30959:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9bd6e __pthread_cond_wait_common (libc.so.6 + 0x9bd6e)
+                #2  0x0000714df40600d2 n/a (libflutter_linux_gtk.so + 0xe600d2)
+                #3  0x0000714df411fab6 n/a (libflutter_linux_gtk.so + 0xf1fab6)
+                #4  0x0000714df411fc15 n/a (libflutter_linux_gtk.so + 0xf1fc15)
+                #5  0x0000714df40fca76 n/a (libflutter_linux_gtk.so + 0xefca76)
+                #6  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #7  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6531:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6546:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 23410:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df20b9047 _ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE (libstdc++.so.6 + 0xb9047)
+                #3  0x0000714ce68d4f3a _ZN11onnxruntime11concurrency15ThreadPoolTemplINS_3EnvENS0_20WorkNoCallbackPolicyEE10WorkerLoopEi (libonnxruntime.so + 0xcd4f3a)
+                #4  0x0000714ce68d5b62 _ZN11onnxruntime11concurrency15ThreadPoolTemplINS_3EnvENS0_20WorkNoCallbackPolicyEE10WorkerLoopEiPN5Eigen19ThreadPoolInterfaceE (libonnxruntime.so + 0xcd5b62)
+                #5  0x0000714ce68f566a _ZN11onnxruntime12_GLOBAL__N_111PosixThread10ThreadMainEPv (libonnxruntime.so + 0xcf566a)
+                #6  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #7  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6548:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6556:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df40600e3 n/a (libflutter_linux_gtk.so + 0xe600e3)
+                #3  0x0000714df400d0a6 n/a (libflutter_linux_gtk.so + 0xe0d0a6)
+                #4  0x0000714df4025a50 n/a (libflutter_linux_gtk.so + 0xe25a50)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6551:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6540:
+                #0  0x0000714df1d2a172 epoll_wait (libc.so.6 + 0x12a172)
+                #1  0x0000714df4006058 n/a (libflutter_linux_gtk.so + 0xe06058)
+                #2  0x0000714df4025a50 n/a (libflutter_linux_gtk.so + 0xe25a50)
+                #3  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #4  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 23409:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714df20b9047 _ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE (libstdc++.so.6 + 0xb9047)
+                #3  0x0000714ce68d4f3a _ZN11onnxruntime11concurrency15ThreadPoolTemplINS_3EnvENS0_20WorkNoCallbackPolicyEE10WorkerLoopEi (libonnxruntime.so + 0xcd4f3a)
+                #4  0x0000714ce68d5b62 _ZN11onnxruntime11concurrency15ThreadPoolTemplINS_3EnvENS0_20WorkNoCallbackPolicyEE10WorkerLoopEiPN5Eigen19ThreadPoolInterfaceE (libonnxruntime.so + 0xcd5b62)
+                #5  0x0000714ce68f566a _ZN11onnxruntime12_GLOBAL__N_111PosixThread10ThreadMainEPv (libonnxruntime.so + 0xcf566a)
+                #6  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #7  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6570:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6552:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 30958:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9bd6e __pthread_cond_wait_common (libc.so.6 + 0x9bd6e)
+                #2  0x0000714df40600d2 n/a (libflutter_linux_gtk.so + 0xe600d2)
+                #3  0x0000714df411fab6 n/a (libflutter_linux_gtk.so + 0xf1fab6)
+                #4  0x0000714df411fc15 n/a (libflutter_linux_gtk.so + 0xf1fc15)
+                #5  0x0000714df40fca76 n/a (libflutter_linux_gtk.so + 0xefca76)
+                #6  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #7  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+
+                Stack trace of thread 6515:
+                #0  0x0000714df1c98e51 __futex_abstimed_wait_common64 (libc.so.6 + 0x98e51)
+                #1  0x0000714df1c9b8cd __pthread_cond_wait_common (libc.so.6 + 0x9b8cd)
+                #2  0x0000714dd5999edd n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599edd)
+                #3  0x0000714dd5965fbb n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x565fbb)
+                #4  0x0000714dd5999e0c n/a (libgallium-25.2.8-0ubuntu0.24.04.2.so + 0x599e0c)
+                #5  0x0000714df1c9cb84 start_thread (libc.so.6 + 0x9cb84)
+                #6  0x0000714df1d29d6c __clone3 (libc.so.6 + 0x129d6c)
+                ELF object binary architecture: AMD x86-64
