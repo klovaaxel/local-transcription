@@ -130,7 +130,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: dist/forelasning-*_amd64.deb
+          path: dist/forelasning_*_amd64.deb
           if-no-files-found: error
 
   publish:
