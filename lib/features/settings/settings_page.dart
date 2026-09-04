@@ -337,6 +337,81 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
             ),
           ),
+          const SizedBox(height: SoftSpace.xxl),
+          SoftSection(
+            label: 'Uppdatering',
+            subtitle:
+                'Söker efter nya versioner vid uppstart. Aldrig under '
+                'eller strax efter en lektion som pågår.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Uppdatera automatiskt'),
+                  subtitle: const Text(
+                    'Hämtar och installerar nya versioner i bakgrunden',
+                  ),
+                  value: settings.autoUpdate,
+                  onChanged: state.busy
+                      ? null
+                      : (value) {
+                          settings.autoUpdate = value;
+                          state.saveSettings();
+                        },
+                ),
+                const SizedBox(height: SoftSpace.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Version ${state.appVersionLabel}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    const SizedBox(width: SoftSpace.md),
+                    SoftButton.quiet(
+                      label: 'Sök efter uppdatering',
+                      icon: SoftIcons.update,
+                      onPressed: state.busy
+                          ? null
+                          : () async {
+                              try {
+                                await state.checkForUpdates();
+                              } catch (_) {}
+                            },
+                    ),
+                  ],
+                ),
+                if (state.updateInfo != null) ...[
+                  const SizedBox(height: SoftSpace.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Version ${state.updateInfo!.version} finns att '
+                          'installera.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      const SizedBox(width: SoftSpace.md),
+                      SoftButton.primary(
+                        label: 'Uppdatera nu',
+                        icon: SoftIcons.download,
+                        onPressed: state.busy
+                            ? null
+                            : () async {
+                                try {
+                                  await state.updateNow();
+                                } catch (_) {}
+                              },
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

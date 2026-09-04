@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
@@ -19,6 +20,8 @@ import 'models/model_catalog.dart';
 import 'summarize/cloud_summarizer.dart';
 import 'summarize/local_summarizer.dart';
 import 'summarize/summarizer.dart';
+import 'update/update_feed.dart';
+import 'update/update_installer.dart';
 
 class LectureAppState extends ChangeNotifier {
   LectureAppState({
@@ -50,6 +53,22 @@ class LectureAppState extends ChangeNotifier {
   bool asrReady = false;
   bool llmReady = false;
 
+  /// "1.0.0+1" from the platform metadata, shown in settings.
+  String appVersionLabel = '';
+  String _appVersion = '';
+  int _appBuild = 0;
+
+  /// Set when the update feed offers a newer version. The settings card
+  /// offers an update button; auto mode installs it without asking.
+  UpdateManifest? updateInfo;
+
+  /// Startup-only: checks the feed once and either installs an update (auto
+  /// mode) or just shows the settings card. Never runs during a lecture and
+  /// never surfaces a network failure — a missing feed must not scold the
+  /// teacher who is recording.
+  Timer? _updateCheck;
+  final UpdateInstaller _installer = UpdateInstaller();
+
   StreamSubscription<Uint8List>? _pcmSub;
   StreamSubscription<CaptionEvent>? _captionSub;
   WavFileSink? _wav;
@@ -60,7 +79,15 @@ class LectureAppState extends ChangeNotifier {
     settings = await AppSettings.load();
     sessions = await store.list();
     await refreshModelFlags();
+    final info = await PackageInfo.fromPlatform();
+    _appVersion = info.version;
+    _appBuild = int.tryParse(info.buildNumber) ?? 0;
+    appVersionLabel =
+        '${info.version}${info.buildNumber.isNotEmpty ? '+${info.buildNumber}' : ''}';
     notifyListeners();
+    // The auto check waits a few seconds after launch so it never competes
+    // with the app warming up; it also skips while recording or busy.
+    _updateCheck = Timer(const Duration(seconds: 8), _autoUpdateCheck);
   }
 
   void clearStatus() {
@@ -112,6 +139,109 @@ class LectureAppState extends ChangeNotifier {
       statusMessage = 'Språkmodell redo.';
       await refreshModelFlags();
     });
+  }
+
+  Future<void> _autoUpdateCheck() async {
+    if (busy || active?.status == SessionStatus.recording) {
+      return;
+    }
+    try {
+      final manifest = await UpdateManifest.fetch();
+      if (manifest == null || !_updateIsNewer(manifest)) {
+        return;
+      }
+      updateInfo = manifest;
+      notifyListeners();
+      if (settings.autoUpdate && _installer.platformSupported) {
+        await updateNow();
+      }
+    } catch (_) {
+      // Update checks are opportunistic; a feed outage is nobody's error to
+      // show. A manual check reports properly through the settings screen.
+    }
+  }
+
+  /// Manual check from settings. Reports in Swedish through the toast, like
+  /// every other piece of work in the app.
+  Future<void> checkForUpdates() async {
+    await _run('Söker efter uppdatering…', () async {
+      final manifest = await UpdateManifest.fetch();
+      if (manifest == null) {
+        statusMessage = 'Ingen uppdateringslista hittad. Har första versionen '
+            'publicerats?';
+        statusIsError = true;
+        return;
+      }
+      if (!versionIsNewer(
+        _appVersion,
+        _appBuild,
+        manifest.version,
+        manifest.build,
+      )) {
+        statusMessage = 'Du har den senaste versionen.';
+        return;
+      }
+      updateInfo = manifest;
+      notifyListeners();
+      if (settings.autoUpdate && _installer.platformSupported) {
+        await updateNow();
+        return;
+      }
+      statusMessage = 'Version ${manifest.version} finns.';
+    });
+  }
+
+  /// Downloads the offered update and installs it. Windows and Linux exit the
+  /// app (the installer respawns it), Android hands over to the system
+  /// installer, macOS reveals the zip in Finder.
+  Future<void> updateNow() async {
+    final manifest = updateInfo;
+    if (manifest == null || !_installer.platformSupported) {
+      return;
+    }
+    final artifact = _installer.artifactFor(manifest);
+    if (artifact == null || !artifact.isValid) {
+      throw StateError(
+        'Version ${manifest.version} saknar uppdateringsfil för den här '
+        'plattformen ännu.',
+      );
+    }
+    await _run('Laddar ner uppdatering ${manifest.version}…', () async {
+      if (Platform.isAndroid) {
+        final allowed = await _installer.canRequestInstall();
+        if (!allowed) {
+          await _installer.openInstallPermissionSettings();
+          throw StateError(
+            'Tillåt appen att installera uppdateringar i Android-inställningarna '
+            'och försök igen.',
+          );
+        }
+      }
+      final path = await _installer.download(
+        artifact,
+        onProgress: (received, total) => _onDownload(
+          DownloadProgress(
+            label: artifact.file,
+            received: received,
+            total: total,
+          ),
+        ),
+      );
+      downloadProgress = null;
+      statusMessage = 'Installerar uppdatering…';
+      notifyListeners();
+      await _installer.install(path);
+    });
+  }
+
+  /// Manifest is newer than the running app?
+  bool _updateIsNewer(UpdateManifest manifest) {
+    return versionIsNewer(
+      _appVersion,
+      _appBuild,
+      manifest.version,
+      manifest.build,
+    );
   }
 
   Future<void> startRecording() async {
@@ -470,6 +600,7 @@ class LectureAppState extends ChangeNotifier {
     unawaited(_pcmSub?.cancel());
     unawaited(_captionSub?.cancel());
     _ticker?.cancel();
+    _updateCheck?.cancel();
     unawaited(_recorder.dispose());
     unawaited(asr.stop());
     super.dispose();

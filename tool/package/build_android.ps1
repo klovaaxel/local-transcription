@@ -74,6 +74,13 @@ if (-not $SkipBuild) {
   Write-Host '==> flutter build apk --release --split-per-abi'
   & flutter build apk --release --split-per-abi
   if ($LASTEXITCODE -ne 0) { throw "flutter build apk failed ($LASTEXITCODE)" }
+
+  # A second, universal APK. The self-updater installs one file straight into
+  # PackageInstaller, so the feed needs an APK that works on any device - the
+  # per-ABI split apks are for first installs handed out by hand.
+  Write-Host '==> flutter build apk --release (universal for self-update)'
+  & flutter build apk --release
+  if ($LASTEXITCODE -ne 0) { throw "flutter build apk (universal) failed ($LASTEXITCODE)" }
 }
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
@@ -85,6 +92,11 @@ foreach ($apk in $apks) {
   $abi = $apk.BaseName -replace '^app-', '' -replace '-release$', ''
   $target = Join-Path $dist "Forelasning-$appVersion-android-$abi.apk"
   Copy-Item $apk.FullName $target -Force
+}
+
+$universal = Join-Path $apkDir 'app-release.apk'
+if (Test-Path $universal) {
+  Copy-Item $universal (Join-Path $dist "Forelasning-$appVersion-android-universal.apk") -Force
 }
 
 # Verify what we are about to hand out is actually signed with the release key,

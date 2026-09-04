@@ -34,6 +34,12 @@ DisableProgramGroupPage=yes
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
+; The app creates ForelasningUpdateMutex at startup (windows/runner/main.cpp).
+; The self-updater runs this installer with /VERYSILENT
+; /FORCECLOSEAPPLICATIONS /RESTARTAPPLICATIONS, which uses the mutex to close
+; the running app, install over it, and start the new build.
+AppMutex=ForelasningUpdateMutex
+
 OutputDir={#MyOutputDir}
 OutputBaseFilename=Forelasning-{#MyAppVersion}-windows-x64-setup
 Compression=lzma2/max

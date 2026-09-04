@@ -15,4 +15,5 @@ abstract final class SoftIcons {
   static const brief = LucideIcons.file_text;
   static const cancel = LucideIcons.x;
   static const cloud = LucideIcons.cloud;
+  static const update = LucideIcons.refresh_cw;
 }

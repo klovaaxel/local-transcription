@@ -14,6 +14,7 @@ class AppSettings {
     String? cloudChatModel,
     String? cloudTranscribeModel,
     this.deleteAudioAfterTranscribe = false,
+    this.autoUpdate = true,
   }) : cloudBaseUrl = cloudBaseUrl ?? CloudCatalog.berget.baseUrl,
        cloudChatModel = cloudChatModel ?? CloudCatalog.berget.chatModel,
        cloudTranscribeModel =
@@ -29,6 +30,11 @@ class AppSettings {
   String cloudChatModel;
   String cloudTranscribeModel;
   bool deleteAudioAfterTranscribe;
+
+  /// When true the app checks the update feed at startup and installs a newer
+  /// release in the background (never during a lecture). The check itself is
+  /// a single HTTPS GET to the release feed.
+  bool autoUpdate;
 
   /// True when anything at all would leave the device. The record and session
   /// screens read this to tell the teacher before audio or text is sent.
@@ -62,6 +68,7 @@ class AppSettings {
   static const _chatModel = 'cloudChatModel';
   static const _asrModel = 'cloudTranscribeModel';
   static const _del = 'deleteAudioAfterTranscribe';
+  static const _autoUpdate = 'autoUpdate';
 
   static Future<AppSettings> load() async {
     final p = await SharedPreferences.getInstance();
@@ -88,6 +95,7 @@ class AppSettings {
       cloudChatModel: p.getString(_chatModel),
       cloudTranscribeModel: p.getString(_asrModel),
       deleteAudioAfterTranscribe: p.getBool(_del) ?? false,
+      autoUpdate: p.getBool(_autoUpdate) ?? true,
     );
   }
 
@@ -103,5 +111,6 @@ class AppSettings {
     await p.setString(_chatModel, cloudChatModel);
     await p.setString(_asrModel, cloudTranscribeModel);
     await p.setBool(_del, deleteAudioAfterTranscribe);
+    await p.setBool(_autoUpdate, autoUpdate);
   }
 }

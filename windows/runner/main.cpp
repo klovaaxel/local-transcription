@@ -7,6 +7,11 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // Named mutex for the Inno Setup self-updater: passed /FORCECLOSEAPPLICATIONS
+  // the installer finds a running app by this mutex and closes it before
+  // replacing files, then /RESTARTAPPLICATIONS launches the new build.
+  ::CreateMutexW(nullptr, FALSE, L"ForelasningUpdateMutex");
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {

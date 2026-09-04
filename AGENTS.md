@@ -173,6 +173,32 @@ runner own `$ORIGIN/lib` does not cover it.
 on every Linux package -- it is the check that catches all of the above, and none
 of it shows up when you just launch the app and look at the home screen.
 
+## Self-update (publish a release)
+
+The app updates itself (Windows, Android, Linux; macOS gets a download +
+Finder reveal, iOS none). The feed is the same GitHub repo's releases:
+`https://github.com/klovaaxel/local-transcription/releases/latest/download/updates.json`
+always points at the newest release. Publish flow:
+
+1. Bump `version:` in `pubspec.yaml` (Android needs the `+build` strictly
+   increasing; the tag comes out as `v<version>`).
+2. Build: `tool/package/build_windows.ps1`, `tool/package/build_android.ps1`
+   (also builds a universal APK -- the file the updater installs),
+   `wsl -d Ubuntu -- bash tool/package/build_linux_deb.sh`.
+3. Publish: `pwsh -File tool/package/publish_update.ps1` -- hashes the dist\
+   artifacts into `updates.json` and `gh release create`s the tag. Needs `gh`
+   authed as klovaaxel.
+
+In-app: `lib/update/` (feed + downloader + installers), state in
+`app_state.dart` (`_autoUpdateCheck` after 8s, silent, skipped while
+recording), settings section "Uppdatering" (version line, auto toggle, Sök
+efter uppdatering). Windows closes the running app via the
+`ForelasningUpdateMutex` (windows/runner/main.cpp + AppMutex in
+forelasning.iss) and relaunches with /RESTARTAPPLICATIONS; Android installs
+through PackageInstaller (MainActivity method channel, first-time "install
+unknown apps" grant). The installer is unsigned, so manifest SHA-256 is the
+integrity check -- UpdateInstaller refuses a hash mismatch.
+
 Desktop icons come from the Android launcher set (`mipmap-*`, 48-192 px) and go
 in the matching `hicolor/<size>x<size>/` directory plus `/usr/share/pixmaps`.
 They are still the stock Flutter icon; there is no brand asset in the repo.
