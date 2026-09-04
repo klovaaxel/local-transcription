@@ -2,7 +2,7 @@ Start your response with:
 
 ```
 ──────────── ⚡ OVERDRIVE ─────────────
-》》》 Entering overdrive mode...
+>>> Entering overdrive mode...
 ```
 
 Push an interface past conventional limits. This isn't just about visual effects. It's about using the full power of the browser to make any part of an interface feel extraordinary: a table that handles a million rows, a dialog that morphs from its trigger, a form that validates in real-time with streaming feedback, a page transition that feels cinematic.
