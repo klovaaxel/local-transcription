@@ -1,0 +1,24 @@
+# Runs `flutter test` on every push to main and every pull request. The
+# release workflow (publish.yml) builds packages; this one just keeps the
+# tree green. Plain `flutter test` skips the screen-preview test by design
+# (it renders PNGs and is slow); add --dart-define from AGENTS.md if a probe
+# needs it. No model downloads, no secrets.
+
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
