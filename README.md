@@ -31,3 +31,18 @@ On Linux, `flutter run -d linux` instead — see [AGENTS.md](AGENTS.md) for the
 packages it needs.
 
 Models download on first use into the app documents folder (hundreds of MB to ~4.7 GB for the 7B brief model). See [AGENTS.md](AGENTS.md).
+
+## Documentation
+
+- [AGENTS.md](AGENTS.md) — the developer manual: platform quirks, packaging, model and prompt design.
+- [PRODUCT.md](PRODUCT.md) — product spec and principles.
+- [docs/INSTALL.md](docs/INSTALL.md) — installation for beta testers.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — ground rules for pull requests.
+
+## Privacy
+
+Audio and transcript never leave the device unless the teacher opts in, per
+job, in settings — and the settings screen says exactly what will be uploaded
+before it happens. The API key is stored in app settings, not a platform
+keychain. See [CONTRIBUTING.md](CONTRIBUTING.md) for the privacy rules
+contributors work under.
