@@ -1,0 +1,76 @@
+name: Felrapport
+description: Rapportera ett problem med appen
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Vad hände?
+      description: Beskriv problemet och vad du förväntade dig skulle hända.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steg för att återskapa
+      placeholder: |
+        1. Öppna ...
+        2. Tryck på ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plattform
+      options:
+        - Windows
+        - Android
+        - Linux
+        - macOS
+        - iOS
+        - Annan
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Appversion
+      description: Versionen visas i Inställningar under Uppdatering.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Var i appen?
+      options:
+        - Inspelning
+        - Transkription (lokal)
+        - Transkription (moln)
+        - Schema/brief (lokal modell)
+        - Brief (moln)
+        - Inställningar
+        - Uppdatering/self-update
+        - Installation/paket
+        - Annat
+    validations:
+      required: true
+  - type: dropdown
+    id: cloud-involved
+    attributes:
+      label: Rör det molnöverföring?
+      description: Gick ljud eller text utanför enheten när felet uppträdde?
+      options:
+        - "Nej, allt kördes lokalt"
+        - "Ja, ljudet skickades till molnet"
+        - "Ja, texten skickades till molnet"
+        - "Osäker"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Loggar och meddelanden
+      description: Klistra gärna in felmeddelanden. Radera aldrig-Visa text ifrån ljudfiler.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Övrigt

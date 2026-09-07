@@ -1,0 +1,30 @@
+name: Funktionsönskemål
+description: Föreslå en ny funktion eller förbättring
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem att lösa
+      description: Vad är svårt eller omöjligt att göra idag?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Förslag på lösning
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Integritet
+      description: Appens standard är att allt körs lokalt. Kan din idé fungera utan att ljud eller text lämnar enheten?
+      options:
+        - label: Ja, går att göra helt lokalt
+        - label: Kräver moln (opt-in i inställningar)
+        - label: Osäker
+  - type: textarea
+    id: extra
+    attributes:
+      label: Övrigt
