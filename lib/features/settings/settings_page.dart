@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
 import '../../models/model_catalog.dart';
+import '../../summarize/brief_sections.dart';
 import '../../ui/soft_buttons.dart';
 import '../../ui/soft_icons.dart';
 import '../../ui/soft_surface.dart';
@@ -32,7 +33,9 @@ class _SettingsPageState extends State<SettingsPage> {
     _apiKey = TextEditingController(text: settings.cloudApiKey);
     _baseUrl = TextEditingController(text: settings.cloudBaseUrl);
     _chatModel = TextEditingController(text: settings.cloudChatModel);
-    _transcribeModel = TextEditingController(text: settings.cloudTranscribeModel);
+    _transcribeModel = TextEditingController(
+      text: settings.cloudTranscribeModel,
+    );
   }
 
   @override
@@ -113,30 +116,48 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 if (settings.transcriber == TranscriberKind.local) ...[
                   const SizedBox(height: SoftSpace.lg),
-                  RadioGroup<AsrModelSize>(
-                    groupValue: settings.asrSize,
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Välj talmodell automatiskt'),
+                    subtitle: const Text(
+                      'På datorn kb-whisper medium (bättre svenska), '
+                      'på telefon small — efter vad enheten orkar.',
+                    ),
+                    value: settings.autoAsr,
                     onChanged: state.busy
-                        ? (_) {}
+                        ? null
                         : (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            settings.asrSize = value;
+                            setState(() => settings.autoAsr = value);
                             state.saveSettings();
                           },
-                    child: Column(
-                      children: [
-                        _Choice(
-                          label: ModelCatalog.small.label,
-                          value: AsrModelSize.small,
-                        ),
-                        _Choice(
-                          label: ModelCatalog.medium.label,
-                          value: AsrModelSize.medium,
-                        ),
-                      ],
-                    ),
                   ),
+                  if (!settings.autoAsr) ...[
+                    const SizedBox(height: SoftSpace.lg),
+                    RadioGroup<AsrModelSize>(
+                      groupValue: settings.asrSize,
+                      onChanged: state.busy
+                          ? (_) {}
+                          : (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              settings.asrSize = value;
+                              state.saveSettings();
+                            },
+                      child: Column(
+                        children: [
+                          _Choice(
+                            label: ModelCatalog.small.label,
+                            value: AsrModelSize.small,
+                          ),
+                          _Choice(
+                            label: ModelCatalog.medium.label,
+                            value: AsrModelSize.medium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: SoftSpace.lg),
                   _ModelStatus(
                     ready: state.asrReady,
@@ -150,6 +171,15 @@ class _SettingsPageState extends State<SettingsPage> {
                             } catch (_) {}
                           },
                   ),
+                  if (settings.asrRealtimeRatio != null) ...[
+                    const SizedBox(height: SoftSpace.lg),
+                    Text(
+                      'Senaste transkriberingen tog '
+                      '${settings.asrRealtimeRatio!.toStringAsFixed(1)}× '
+                      'ljudets längd.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ],
             ),
@@ -158,7 +188,8 @@ class _SettingsPageState extends State<SettingsPage> {
           SoftSection(
             label: 'Sammanfattning',
             subtitle:
-                '1,5B räcker på telefon. 7B ger ett bättre underlag på dator.',
+                'Modellen väljs automatiskt efter enheten. 3B på telefon, '
+                '7B på dator.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -188,36 +219,58 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 if (settings.summarizer == SummarizerKind.local) ...[
                   const SizedBox(height: SoftSpace.lg),
-                  RadioGroup<LlmModelSize>(
-                    groupValue: settings.llmSize,
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Välj modell automatiskt'),
+                    subtitle: const Text(
+                      'På datorn 7B, på telefon 3B — efter vad enheten klarar.',
+                    ),
+                    value: settings.autoLlm,
                     onChanged: state.busy
-                        ? (_) {}
+                        ? null
                         : (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            settings.llmSize = value;
+                            setState(() => settings.autoLlm = value);
                             state.saveSettings();
                           },
-                    child: Column(
-                      children: [
-                        _Choice(
-                          label: ModelCatalog.llmSmall.label,
-                          value: LlmModelSize.small,
-                        ),
-                        _Choice(
-                          label: ModelCatalog.llmLarge.label,
-                          value: LlmModelSize.large,
-                        ),
-                      ],
-                    ),
                   ),
+                  if (!settings.autoLlm) ...[
+                    const SizedBox(height: SoftSpace.lg),
+                    RadioGroup<LlmModelSize>(
+                      groupValue: settings.llmSize,
+                      onChanged: state.busy
+                          ? (_) {}
+                          : (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              settings.llmSize = value;
+                              state.saveSettings();
+                            },
+                      child: Column(
+                        children: [
+                          _Choice(
+                            label: ModelCatalog.llmSmall.label,
+                            value: LlmModelSize.small,
+                          ),
+                          _Choice(
+                            label: ModelCatalog.llmMedium.label,
+                            value: LlmModelSize.medium,
+                          ),
+                          _Choice(
+                            label: ModelCatalog.llmLarge.label,
+                            value: LlmModelSize.large,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: SoftSpace.lg),
                   _ModelStatus(
                     ready: state.llmReady,
                     readyLabel: 'Språkmodell finns på enheten',
                     missingLabel: 'Språkmodell saknas',
-                    detail: ModelCatalog.llm(settings.llmSize).downloadedName,
+                    detail: ModelCatalog.llm(settings.effectiveLlmSize)
+                        .downloadedName,
                     onDownload: state.busy
                         ? null
                         : () async {
@@ -226,6 +279,25 @@ class _SettingsPageState extends State<SettingsPage> {
                             } catch (_) {}
                           },
                   ),
+                  if (settings.llmMsPerKchar != null ||
+                      settings.llmTokPerSec != null) ...[
+                    const SizedBox(height: SoftSpace.lg),
+                    Text(
+                      [
+                        if (settings.gpuBackendName != null)
+                          'Räkning: ${settings.gpuBackendName}',
+                        if (settings.llmTokPerSec != null)
+                          'Modellen genererar '
+                              '${settings.llmTokPerSec!.toStringAsFixed(0)} '
+                              'tokens/s.',
+                        if (settings.llmMsPerKchar != null)
+                          'Senaste underlaget tog '
+                              '${settings.llmMsPerKchar!.toStringAsFixed(0)} '
+                              'ms per tusen tecken transkript.',
+                      ].join(' '),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ],
             ),
@@ -234,7 +306,10 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: SoftSpace.xxl),
             SoftSection(
               label: 'Leverantör',
-              subtitle: _cloudSubtitle(settings.transcriber, settings.summarizer),
+              subtitle: _cloudSubtitle(
+                settings.transcriber,
+                settings.summarizer,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -321,6 +396,37 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ],
+          const SizedBox(height: SoftSpace.xxl),
+          SoftSection(
+            label: 'Underlagets innehåll',
+            subtitle:
+                'Vad underlaget som klistras in i skolplattformen '
+                'ska innehålla. Översikten ingår alltid.',
+            child: Column(
+              children: [
+                for (final spec in BriefSectionCatalog.all.skip(1)) ...[
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(spec.heading),
+                    subtitle: Text(spec.instruction),
+                    value: settings.briefSectionIds.contains(spec.id),
+                    onChanged: state.busy
+                        ? null
+                        : (value) {
+                            setState(() {
+                              settings.briefSectionIds = [
+                                for (final id in settings.briefSectionIds)
+                                  if (id != spec.id) id,
+                                if (value) spec.id,
+                              ];
+                            });
+                            state.saveSettings();
+                          },
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: SoftSpace.xxl),
           SoftSection(
             label: 'Lagring',

@@ -1,0 +1,2 @@
+- Det tycker jag är läskigt men han älskar "Swede Så Micael Widenius valde programmeringsspråket SQL och så skrev han en bra databas Och databasens uppgift Det är att, när ett program Om vi kommer till scenen Skicka någonting till databasen S
+Ta med det som hör hemma i underlaget.

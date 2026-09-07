@@ -6,19 +6,137 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('llm catalog keeps 1.5B as default and 7B as the desk option', () {
-    expect(ModelCatalog.llm(LlmModelSize.small).file.fileName, contains('1.5b'));
-    expect(ModelCatalog.llmLarge.files, hasLength(2));
+  test(
+    'llm catalog keeps 1.5B, adds 3B for phones and 7B as the desk option',
+    () {
+      expect(
+        ModelCatalog.llm(LlmModelSize.small).file.fileName,
+        contains('1.5b'),
+      );
+      expect(
+        ModelCatalog.llm(LlmModelSize.medium).file.fileName,
+        contains('3b'),
+      );
+      expect(ModelCatalog.llmLarge.files, hasLength(2));
+      expect(ModelCatalog.llmLarge.file.fileName, contains('00001-of-00002'));
+      expect(
+        ModelCatalog.llmLarge.shards.single.fileName,
+        contains('00002-of-00002'),
+      );
+      expect(
+        ModelCatalog.llmLarge.contextSize,
+        greaterThan(ModelCatalog.llmSmall.contextSize),
+      );
+    },
+  );
+
+  test('auto model pick: 3B on phones, 7B on desktop', () {
     expect(
-      ModelCatalog.llmLarge.file.fileName,
-      contains('00001-of-00002'),
+      AppSettings().effectiveLlmSize,
+      LlmModelSize.large,
+      reason: 'the test host is a desktop OS',
     );
     expect(
-      ModelCatalog.llmLarge.shards.single.fileName,
-      contains('00002-of-00002'),
+      AppSettings(autoLlm: false, llmSize: LlmModelSize.small).effectiveLlmSize,
+      LlmModelSize.small,
+      reason: 'a manual pick wins over the device default',
     );
-    expect(ModelCatalog.llmLarge.contextSize, greaterThan(ModelCatalog.llmSmall.contextSize));
   });
+
+  test('auto speech model: kb-whisper-medium on desktops, manual wins', () {
+    expect(
+      AppSettings().effectiveAsrSize,
+      AsrModelSize.medium,
+      reason: 'the test host is a desktop OS with several cores',
+    );
+    expect(
+      AppSettings(autoAsr: false, asrSize: AsrModelSize.small).effectiveAsrSize,
+      AsrModelSize.small,
+      reason: 'a manual pick wins over the device default',
+    );
+  });
+
+  test('a weak CPU benchmark downgrades the automatic picks', () {
+    expect(
+      AppSettings(cpuScoreMbs: 112).effectiveLlmSize,
+      LlmModelSize.large,
+      reason: 'the reference desktop stays on 7B',
+    );
+    expect(
+      AppSettings(cpuScoreMbs: 20).effectiveLlmSize,
+      LlmModelSize.medium,
+      reason: 'a CPU-only 7B brief would take minutes',
+    );
+    expect(AppSettings(cpuScoreMbs: 20).effectiveAsrSize, AsrModelSize.small);
+  });
+  test('persists the measured GPU preference for the local brief', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gpu = AppSettings()..llmGpuOffload = true;
+    await gpu.save();
+    expect((await AppSettings.load()).llmGpuOffload, isTrue);
+
+    SharedPreferences.setMockInitialValues({});
+    final cpu = AppSettings()..llmGpuOffload = false;
+    await cpu.save();
+    expect((await AppSettings.load()).llmGpuOffload, isFalse);
+
+    SharedPreferences.setMockInitialValues({});
+    final unset = AppSettings()..llmGpuOffload = null;
+    await unset.save();
+    expect((await AppSettings.load()).llmGpuOffload, isNull);
+  });
+
+  test(
+    'the decode-speed bench downgrades a slow tier before the first brief',
+    () {
+      final fast = AppSettings();
+      expect(
+        fast.applyLlmSpeedBench(5, LlmModelSize.large),
+        isFalse,
+        reason: 'the measured reference desktop does ~5 tok/s on the 7B',
+      );
+      expect(fast.effectiveLlmSize, LlmModelSize.large);
+
+      final slow = AppSettings();
+      expect(slow.applyLlmSpeedBench(1.5, LlmModelSize.large), isTrue);
+      expect(slow.effectiveLlmSize, LlmModelSize.medium);
+
+      final manual = AppSettings(autoLlm: false, llmSize: LlmModelSize.large);
+      expect(
+        manual.applyLlmSpeedBench(1.5, LlmModelSize.large),
+        isFalse,
+        reason: 'manual picks are never second-guessed',
+      );
+    },
+  );
+
+  test(
+    'calibration downgrades a slow tier and manual picks are untouched',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+
+      final slowLlm = AppSettings();
+      final changed = slowLlm.applyLlmCalibration(5000);
+      expect(changed, isTrue);
+      expect(slowLlm.effectiveLlmSize, LlmModelSize.medium);
+
+      final fastLlm = AppSettings();
+      expect(fastLlm.applyLlmCalibration(20), isFalse);
+      expect(fastLlm.effectiveLlmSize, LlmModelSize.large);
+
+      final manual = AppSettings(autoLlm: false, llmSize: LlmModelSize.large);
+      expect(manual.applyLlmCalibration(5000), isFalse);
+      expect(
+        manual.effectiveLlmSize,
+        LlmModelSize.large,
+        reason: 'manual picks are never second-guessed',
+      );
+
+      final slowAsr = AppSettings(cpuScoreMbs: 112);
+      expect(slowAsr.applyAsrCalibration(12), isTrue);
+      expect(slowAsr.effectiveAsrSize, AsrModelSize.small);
+    },
+  );
 
   test('cloud defaults point at Berget AI but nothing is switched on', () {
     final settings = AppSettings();

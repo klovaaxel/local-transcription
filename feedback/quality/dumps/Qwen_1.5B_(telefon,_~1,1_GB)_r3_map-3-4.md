@@ -1,0 +1,2 @@
+- PioP kan inte göra någonting med en sida som är färdigladdad POP koden ch
+- Det finns inget som säger att den ska köras igen eller senare.

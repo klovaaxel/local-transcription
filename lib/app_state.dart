@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:llm_llamacpp/llm_llamacpp.dart' show BackendDetector;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:record/record.dart';
@@ -17,6 +18,8 @@ import 'data/app_settings.dart';
 import 'data/lecture_session.dart';
 import 'data/session_store.dart';
 import 'models/model_catalog.dart';
+import 'perf/device_bench.dart';
+import 'perf/llm_speed_probe.dart';
 import 'summarize/cloud_summarizer.dart';
 import 'summarize/local_summarizer.dart';
 import 'summarize/summarizer.dart';
@@ -88,6 +91,33 @@ class LectureAppState extends ChangeNotifier {
     // The auto check waits a few seconds after launch so it never competes
     // with the app warming up; it also skips while recording or busy.
     _updateCheck = Timer(const Duration(seconds: 8), _autoUpdateCheck);
+    unawaited(_runStartupBench());
+  }
+
+  /// Runs the CPU benchmark once per app version (first launch counts as a
+  /// version change). Pure Dart, under a second, in a background isolate.
+  /// The score gates the auto model pick (see [AppSettings._autoLlmPick]);
+  /// the real-work calibrations below refine it further. A new benchmark
+  /// cycle also clears the measured caps: thresholds are per device, a new
+  /// app version re-measures everything, and a one-off slow run (background
+  /// load during the first brief, say) must not demote a device forever.
+  Future<void> _runStartupBench() async {
+    final label = appVersionLabel;
+    if (label.isEmpty || settings.benchVersion == label) {
+      return;
+    }
+    try {
+      final score = await DeviceBench.cpuScoreMbs();
+      settings.cpuScoreMbs = score;
+      settings.benchVersion = label;
+      settings.llmCap = null;
+      settings.asrCap = null;
+      await settings.save();
+      await refreshModelFlags();
+    } catch (_) {
+      // A failed benchmark must never block the app; the platform
+      // heuristics carry the pick.
+    }
   }
 
   void clearStatus() {
@@ -106,8 +136,8 @@ class LectureAppState extends ChangeNotifier {
   }
 
   Future<void> refreshModelFlags() async {
-    asrReady = await downloader.asrReady(settings.asrSize);
-    llmReady = await downloader.llmReady(size: settings.llmSize);
+    asrReady = await downloader.asrReady(settings.effectiveAsrSize);
+    llmReady = await downloader.llmReady(size: settings.effectiveLlmSize);
     notifyListeners();
   }
 
@@ -120,7 +150,7 @@ class LectureAppState extends ChangeNotifier {
   Future<void> downloadAsr() async {
     await _run('Laddar ner talmodell…', () async {
       await downloader.ensureAsr(
-        size: settings.asrSize,
+        size: settings.effectiveAsrSize,
         onProgress: _onDownload,
       );
       downloadProgress = null;
@@ -132,7 +162,7 @@ class LectureAppState extends ChangeNotifier {
   Future<void> downloadLlm() async {
     await _run('Laddar ner språkmodell…', () async {
       await downloader.ensureLlm(
-        size: settings.llmSize,
+        size: settings.effectiveLlmSize,
         onProgress: _onDownload,
       );
       downloadProgress = null;
@@ -167,7 +197,8 @@ class LectureAppState extends ChangeNotifier {
     await _run('Söker efter uppdatering…', () async {
       final manifest = await UpdateManifest.fetch();
       if (manifest == null) {
-        statusMessage = 'Ingen uppdateringslista hittad. Har första versionen '
+        statusMessage =
+            'Ingen uppdateringslista hittad. Har första versionen '
             'publicerats?';
         statusIsError = true;
         return;
@@ -253,7 +284,7 @@ class LectureAppState extends ChangeNotifier {
       final live = settings.liveCaptionsEnabled;
       if (live) {
         final paths = await downloader.ensureAsr(
-          size: settings.asrSize,
+          size: settings.effectiveAsrSize,
           onProgress: _onDownload,
         );
         downloadProgress = null;
@@ -275,18 +306,21 @@ class LectureAppState extends ChangeNotifier {
 
       await _captionSub?.cancel();
       if (live) {
-        _captionSub = asr.captions.listen((event) {
-          final current = active;
-          if (current == null) {
-            return;
-          }
-          current.liveCaptions = event.text;
-          notifyListeners();
-          unawaited(store.upsert(current));
-        }, onError: (Object e) {
-          statusMessage = e.toString();
-          notifyListeners();
-        });
+        _captionSub = asr.captions.listen(
+          (event) {
+            final current = active;
+            if (current == null) {
+              return;
+            }
+            current.liveCaptions = event.text;
+            notifyListeners();
+            unawaited(store.upsert(current));
+          },
+          onError: (Object e) {
+            statusMessage = e.toString();
+            notifyListeners();
+          },
+        );
       }
 
       _wav = WavFileSink(audioFile);
@@ -370,14 +404,18 @@ class LectureAppState extends ChangeNotifier {
 
   Future<void> transcribeSession(LectureSession session) async {
     await _run('Transkriberar…', () async {
-      if (session.audioPath == null || !await File(session.audioPath!).exists()) {
+      if (session.audioPath == null ||
+          !await File(session.audioPath!).exists()) {
         throw StateError('Ingen ljudfil att transkribera.');
       }
       session.status = SessionStatus.transcribing;
       await store.upsert(session);
       notifyListeners();
       try {
+        final started = Stopwatch()..start();
         session.transcript = await _transcribeAudio(session.audioPath!);
+        started.stop();
+        await _calibrateAsr(session.audioPath!, started.elapsedMilliseconds);
         session.status = SessionStatus.ready;
         session.error = null;
         if (settings.deleteAudioAfterTranscribe) {
@@ -416,23 +454,38 @@ class LectureAppState extends ChangeNotifier {
         summarizer = CloudSummarizer(
           config: CloudConfig.fromSettings(settings),
           onProgress: briefProgress,
+          specs: settings.briefSpecs,
         );
       } else {
-        final spec = ModelCatalog.llm(settings.llmSize);
+        final size = settings.effectiveLlmSize;
         final modelPath = await downloader.ensureLlm(
-          size: settings.llmSize,
+          size: size,
           onProgress: _onDownload,
         );
         downloadProgress = null;
+        // The probe may step the tier down for what settings say and for
+        // the NEXT brief+download, but this run keeps the spec that matches
+        // the file already on the device.
+        final spec = ModelCatalog.llm(size);
+        await _speedProbeLlm(size, modelPath);
         summarizer = LocalLlmSummarizer(
           modelPath: modelPath,
           spec: spec,
           onProgress: briefProgress,
+          specs: settings.briefSpecsFor(size),
+          gpuLayers: settings.llmGpuOffload == null
+              ? null
+              : (settings.llmGpuOffload! ? 99 : 0),
         );
       }
 
       try {
+        final started = Stopwatch()..start();
         session.summary = await summarizer.summarize(transcript);
+        started.stop();
+        if (settings.summarizer == SummarizerKind.local) {
+          await _calibrateLlm(transcript.length, started.elapsedMilliseconds);
+        }
         session.error = null;
       } catch (e) {
         session.error = e.toString();
@@ -443,6 +496,117 @@ class LectureAppState extends ChangeNotifier {
         sessions = await store.list();
       }
     });
+  }
+
+  /// A short, fixed decode right after the model is on the device — the
+  /// only measurement that includes the GPU. Runs once per tier+app
+  /// version, before the teacher's first real brief. If the tier cannot
+  /// generate at a sane speed the auto pick steps down and says so; this
+  /// brief still uses the file that is already downloaded.
+  Future<void> _speedProbeLlm(LlmModelSize size, String modelPath) async {
+    _captureGpuBackend();
+    final key = '${size.name}:$_appVersion';
+    if (settings.llmTokBenchKey == key) {
+      return;
+    }
+    statusMessage = 'Mäter modellens hastighet (en gång)…';
+    notifyListeners();
+    var downgraded = false;
+    double? tokPerSec;
+    try {
+      // On phones this first measures GPU vs CPU for the OFFLOAD policy,
+      // then reports the winner's speed as the device number.
+      final preferGpu = await LlmSpeedProbe.measureGpuPreference(
+        modelPath: modelPath,
+        spec: ModelCatalog.llm(size),
+      );
+      settings.llmGpuOffload = preferGpu;
+      tokPerSec = await LlmSpeedProbe.tokPerSec(
+        modelPath: modelPath,
+        spec: ModelCatalog.llm(size),
+        nGpuLayers: preferGpu == null ? null : (preferGpu ? 99 : 0),
+      );
+      downgraded = settings.applyLlmSpeedBench(tokPerSec, size);
+    } catch (_) {
+      // One attempt per version, then stand down — an unreachable probe
+      // must never block summarizing.
+    }
+    settings.llmTokBenchKey = key;
+    await settings.save();
+    await refreshModelFlags();
+    if (downgraded && tokPerSec != null) {
+      notice(
+        'Modellen är för långsam på den här datorn '
+        '(${tokPerSec.toStringAsFixed(0)} tokens/s). Nästa underlag '
+        'använder ${ModelCatalog.llm(settings.effectiveLlmSize).label}.',
+      );
+    }
+  }
+
+  /// First available GPU-compute backend, remembered for the settings page.
+  /// Informational: what decides is the measured decode speed.
+  void _captureGpuBackend() {
+    if (settings.gpuBackendName != null) {
+      return;
+    }
+    try {
+      final gpu = BackendDetector.getAvailableBackends()
+          .where((b) => b.isAvailable && b.name != 'CPU')
+          .toList();
+      if (gpu.isEmpty) {
+        return;
+      }
+      final b = gpu.first;
+      settings.gpuBackendName =
+          '${b.name}${b.deviceName != null ? ' (${b.deviceName})' : ''}';
+    } catch (_) {
+      // Backend probing shells out (nvidia-smi) where allowed; a failure
+      // here costs nothing.
+    }
+  }
+
+  /// The device says how fast it really transcribed. A ratio far above a
+  /// few x realtime means the auto pick over-reached; the pick steps down a
+  /// tier and says so. Manual picks are never second-guessed.
+  Future<void> _calibrateAsr(String wavPath, int wallMs) async {
+    double? audioSeconds;
+    try {
+      final bytes = await File(wavPath).length();
+      audioSeconds = bytes / 32000.0; // 16 kHz mono, 16-bit PCM
+    } catch (_) {
+      return;
+    }
+    if (audioSeconds < 5) {
+      return;
+    }
+    final ratio = wallMs / 1000.0 / audioSeconds;
+    final downgraded = settings.applyAsrCalibration(ratio);
+    await settings.save();
+    await refreshModelFlags();
+    if (downgraded) {
+      notice(
+        'Datorn/enheten var långsam — talmodellen växlade till '
+        '${ModelCatalog.asr(settings.effectiveAsrSize).label}.',
+      );
+    }
+  }
+
+  /// Same idea for the brief: measured ms per 1000 characters decides
+  /// whether the automatic tier stands. Manual picks are never touched.
+  Future<void> _calibrateLlm(int transcriptChars, int wallMs) async {
+    if (transcriptChars < 2000) {
+      return;
+    }
+    final perKchar = wallMs / (transcriptChars / 1000);
+    final downgraded = settings.applyLlmCalibration(perKchar);
+    await settings.save();
+    await refreshModelFlags();
+    if (downgraded) {
+      notice(
+        'Underlaget var långsamt på den här datorn — språkmodellen växlade '
+        'till ${ModelCatalog.llm(settings.effectiveLlmSize).label}.',
+      );
+    }
   }
 
   /// Speech to text for a finished recording, through whichever backend the
@@ -466,7 +630,7 @@ class LectureAppState extends ChangeNotifier {
     final alreadyRunning = asr.running;
     if (!alreadyRunning) {
       final paths = await downloader.ensureAsr(
-        size: settings.asrSize,
+        size: settings.effectiveAsrSize,
         onProgress: _onDownload,
       );
       downloadProgress = null;

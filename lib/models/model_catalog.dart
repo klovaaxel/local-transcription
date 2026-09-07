@@ -1,6 +1,6 @@
 enum AsrModelSize { small, medium }
 
-enum LlmModelSize { small, large }
+enum LlmModelSize { small, medium, large }
 
 enum SummarizerKind { local, cloud }
 
@@ -107,8 +107,7 @@ class ModelCatalog {
 
   static const sileroVad = RemoteFile(
     fileName: 'silero_vad.onnx',
-    url:
-        'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx',
+    url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx',
   );
 
   static const llmSmall = LlmModelSpec(
@@ -116,11 +115,24 @@ class ModelCatalog {
     label: 'Qwen 1.5B (telefon, ~1,1 GB)',
     file: RemoteFile(
       fileName: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
-      url:
-          'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf',
+      url: 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf',
     ),
     contextSize: 4096,
     compactMaxChars: 8000,
+  );
+
+  /// The phone default under auto pick: the A/B harness (test/
+  /// brief_probe_test.dart, feedback/quality/SCORES.md) showed the 3B keeps
+  /// the Qwen prompt-following the 1.5B lacks, at ~2 GB and phone-GPU speed.
+  static const llmMedium = LlmModelSpec(
+    size: LlmModelSize.medium,
+    label: 'Qwen 3B (mobil, ~2 GB)',
+    file: RemoteFile(
+      fileName: 'qwen2.5-3b-instruct-q4_k_m.gguf',
+      url: 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf',
+    ),
+    contextSize: 8192,
+    compactMaxChars: 12000,
   );
 
   static const llmLarge = LlmModelSpec(
@@ -128,23 +140,28 @@ class ModelCatalog {
     label: 'Qwen 7B (dator, ~4,7 GB)',
     file: RemoteFile(
       fileName: 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
-      url:
-          'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
+      url: 'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
     ),
     shards: [
       RemoteFile(
         fileName: 'qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf',
-        url:
-            'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf',
+        url: 'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf',
       ),
     ],
-    contextSize: 8192,
+    contextSize: 14336,
     compactMaxChars: 24000,
     storageLabel: 'qwen2.5-7b-instruct-q4_k_m (2 filer)',
   );
 
   static LlmModelSpec llm(LlmModelSize size) {
-    return size == LlmModelSize.large ? llmLarge : llmSmall;
+    switch (size) {
+      case LlmModelSize.small:
+        return llmSmall;
+      case LlmModelSize.medium:
+        return llmMedium;
+      case LlmModelSize.large:
+        return llmLarge;
+    }
   }
 
   static const small = AsrModelSpec(
