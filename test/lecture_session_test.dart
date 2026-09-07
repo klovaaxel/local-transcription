@@ -7,7 +7,7 @@ void main() {
     final session = LectureSession(
       id: 'a',
       startedAt: DateTime.utc(2026, 9, 1, 12),
-      summary: const NewsletterSummary(
+      summary: NewsletterSummary.legacy(
         discussed: 'Bråk och procent: vi räknade uppgift 3 till 7.',
         decided: 'Prov på fredag.',
         absentees: 'Läs kapitel 4.',
@@ -40,11 +40,7 @@ void main() {
     final session = LectureSession(
       id: 'd',
       startedAt: DateTime.utc(2026, 9, 1, 12),
-      summary: const NewsletterSummary(
-        discussed: 'Unionsupplösningen 1905',
-        decided: NewsletterSummary.emptyPlaceholder,
-        absentees: NewsletterSummary.emptyPlaceholder,
-      ),
+      summary: NewsletterSummary.legacy(discussed: 'Unionsupplösningen 1905'),
     );
     final restored = LectureSession.fromJson(session.toJson());
     expect(restored.autoTitle, 'Unionsupplösningen 1905');

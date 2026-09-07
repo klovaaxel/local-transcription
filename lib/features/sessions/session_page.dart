@@ -54,7 +54,10 @@ class _SessionPageState extends State<SessionPage> {
   /// Linux has no share sheet: `share_plus` opens a `mailto:` link there and
   /// throws when the desktop has no mail handler. Left unawaited that became an
   /// unhandled async error and the button looked broken. Kopiera is the way out.
-  Future<void> _shareBrief(LectureAppState state, LectureSession session) async {
+  Future<void> _shareBrief(
+    LectureAppState state,
+    LectureSession session,
+  ) async {
     final summary = session.summary;
     if (summary == null) {
       return;
@@ -248,11 +251,7 @@ class _SessionPageState extends State<SessionPage> {
 }
 
 class _BriefPane extends StatelessWidget {
-  const _BriefPane({
-    required this.session,
-    required this.actions,
-    this.footer,
-  });
+  const _BriefPane({required this.session, required this.actions, this.footer});
 
   final LectureSession session;
   final Widget actions;
@@ -281,19 +280,24 @@ class _BriefPane extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BriefBlock(
-                heading: NewsletterSummary.discussedHeading,
-                body: summary?.discussed ?? pending,
-              ),
-              BriefBlock(
-                heading: NewsletterSummary.decidedHeading,
-                body: summary?.decided ?? pending,
-              ),
-              BriefBlock(
-                heading: NewsletterSummary.absenteesHeading,
-                body: summary?.absentees ?? pending,
-                last: true,
-              ),
+              if (summary != null && summary.sections.isNotEmpty)
+                for (var i = 0; i < summary.sections.length; i++)
+                  BriefBlock(
+                    heading: summary.sections[i].heading,
+                    body: summary.sections[i].body,
+                    last: i == summary.sections.length - 1,
+                  )
+              else
+                for (
+                  var i = 0;
+                  i < NewsletterSummary.defaultHeadings.length;
+                  i++
+                )
+                  BriefBlock(
+                    heading: NewsletterSummary.defaultHeadings[i],
+                    body: pending,
+                    last: i == NewsletterSummary.defaultHeadings.length - 1,
+                  ),
             ],
           ),
         ),

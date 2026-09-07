@@ -59,53 +59,55 @@ void main() {
     expect(summary.absentees, 'Ta linjal.');
   });
 
-  test('a lecture past the window is mapped in parts and then reduced',
-      () async {
-    final prompts = <String>[];
-    final summarizer = CloudSummarizer(
-      config: _config,
-      client: OpenAiCompatibleClient(
+  test(
+    'a lecture past the window is mapped in parts and then reduced',
+    () async {
+      final prompts = <String>[];
+      final summarizer = CloudSummarizer(
         config: _config,
-        client: MockClient((request) async {
-          final body = jsonDecode(request.body) as Map<String, dynamic>;
-          prompts.add(
-            ((body['messages'] as List).first as Map)['content'] as String,
-          );
-          return _brief('Del.', 'Inlämning måndag.', 'Läs kapitel 4.');
-        }),
-      ),
-    );
+        client: OpenAiCompatibleClient(
+          config: _config,
+          client: MockClient((request) async {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            prompts.add(
+              ((body['messages'] as List).first as Map)['content'] as String,
+            );
+            return _brief('Del.', 'Inlämning måndag.', 'Läs kapitel 4.');
+          }),
+        ),
+      );
 
-    // Three windows' worth of transcript, on sentence breaks.
-    final transcript = List.generate(
-      CloudSummarizer.chunkChars ~/ 20 * 3,
-      (i) => 'Mening nummer $i om ämnet. ',
-    ).join();
+      // Three windows' worth of transcript, on sentence breaks.
+      final transcript = List.generate(
+        CloudSummarizer.chunkChars ~/ 20 * 3,
+        (i) => 'Mening nummer $i om ämnet. ',
+      ).join();
 
-    final progress = <String>[];
-    final tracked = CloudSummarizer(
-      config: _config,
-      client: OpenAiCompatibleClient(
+      final progress = <String>[];
+      final tracked = CloudSummarizer(
         config: _config,
-        client: MockClient((request) async {
-          return _brief('Del.', 'Inlämning måndag.', 'Läs kapitel 4.');
-        }),
-      ),
-      onProgress: (done, total) => progress.add('$done/$total'),
-    );
+        client: OpenAiCompatibleClient(
+          config: _config,
+          client: MockClient((request) async {
+            return _brief('Del.', 'Inlämning måndag.', 'Läs kapitel 4.');
+          }),
+        ),
+        onProgress: (done, total) => progress.add('$done/$total'),
+      );
 
-    final summary = await summarizer.summarize(transcript);
-    await tracked.summarize(transcript);
+      final summary = await summarizer.summarize(transcript);
+      await tracked.summarize(transcript);
 
-    expect(summary.decided, 'Inlämning måndag.');
-    expect(prompts.length, greaterThan(1));
-    expect(
-      prompts.last,
-      contains('slår ihop'),
-      reason: 'the last call must be the reduce step, not another part',
-    );
-    expect(progress.first, endsWith('/${progress.length}'));
-  });
+      expect(summary.decided, 'Inlämning måndag.');
+      expect(prompts.length, greaterThan(1));
+      expect(
+        prompts.last,
+        contains('slår ihop'),
+        reason: 'the last call must be the reduce step, not another part',
+      );
+      expect(progress.first, endsWith('/${progress.length}'));
+    },
+  );
 
   test('a provider error surfaces as a Swedish message', () async {
     final summarizer = CloudSummarizer(

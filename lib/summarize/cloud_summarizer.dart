@@ -9,6 +9,10 @@ class CloudSummarizer extends BriefPipeline {
     required this.config,
     OpenAiCompatibleClient? client,
     super.onProgress,
+    super.specs,
+    super.useFewShot,
+    super.useKeyLines,
+    super.useKeyLineHints,
   }) : _client = client ?? OpenAiCompatibleClient(config: config),
        _ownsClient = client == null;
 
@@ -24,7 +28,10 @@ class CloudSummarizer extends BriefPipeline {
   int get chunkCharBudget => chunkChars;
 
   @override
-  Future<String> complete(List<ChatTurn> turns) {
+  // longOutput (the cleaning pass) is a no-op in the cloud path: the hosted
+  // models are strong enough that the raw transcript needs no denoising, and
+  // it would double the request cost.
+  Future<String> complete(List<ChatTurn> turns, {bool longOutput = false}) {
     return _client.chat(turns: turns);
   }
 

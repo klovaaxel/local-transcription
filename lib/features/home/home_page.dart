@@ -27,9 +27,9 @@ class HomePage extends StatelessWidget {
         tooltip: 'Inställningar',
         icon: SoftIcons.settings,
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const SettingsPage()));
         },
       ),
       action: SoftActionBar(
@@ -156,9 +156,10 @@ class _LectureCard extends StatelessWidget {
       SessionStatus.recording => 'Spelar in',
       SessionStatus.transcribing => 'Transkriberar',
       SessionStatus.summarizing => 'Skriver underlag',
-      SessionStatus.ready => session.summary == null
-          ? 'Redo att skriva underlag'
-          : NewsletterSummary.discussedHeading,
+      SessionStatus.ready =>
+        session.summary == null
+            ? 'Redo att skriva underlag'
+            : NewsletterSummary.discussedHeading,
     };
   }
 }

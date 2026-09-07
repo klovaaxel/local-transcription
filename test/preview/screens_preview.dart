@@ -45,7 +45,7 @@ LectureSession _ready() => LectureSession(
   transcript:
       'Idag gick vi igenom unionsupplösningen 1905 och varför Norge lämnade '
       'unionen. Vi tittade också på Karlstadskonventionen.',
-  summary: const NewsletterSummary(
+  summary: NewsletterSummary.legacy(
     discussed:
         'Unionsupplösningen 1905: bakgrunden, konsulatfrågan och '
         'Karlstadskonventionen. Vi läste källtexten på sidan 118.',
