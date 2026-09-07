@@ -57,13 +57,16 @@ void main() {
     );
   });
 
-  test('ignores punctuation when the new decode starts with the committed text', () {
-    expect(
-      mergeOverlappingTranscript(
-        'vi tar rast nu barnen',
+  test(
+    'ignores punctuation when the new decode starts with the committed text',
+    () {
+      expect(
+        mergeOverlappingTranscript(
+          'vi tar rast nu barnen',
+          'Vi tar rast nu. Barnen går ut',
+        ),
         'Vi tar rast nu. Barnen går ut',
-      ),
-      'Vi tar rast nu. Barnen går ut',
-    );
-  });
+      );
+    },
+  );
 }

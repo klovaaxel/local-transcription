@@ -28,8 +28,7 @@ String mergeOverlappingTranscript(String previous, String next) {
   }
 
   for (var n = min(prevNorm.length, nextNorm.length); n >= 1; n--) {
-    final idx =
-        _indexOfWords(nextNorm, prevNorm.sublist(prevNorm.length - n));
+    final idx = _indexOfWords(nextNorm, prevNorm.sublist(prevNorm.length - n));
     if (idx == 0) {
       return [...prevWords, ...nextWords.sublist(n)].join(' ');
     }
@@ -43,9 +42,9 @@ String mergeOverlappingTranscript(String previous, String next) {
 
 String _normWord(String word) {
   return word.toLowerCase().replaceAll(
-        RegExp(r'^[^a-z0-9åäöé]+|[^a-z0-9åäöé]+$'),
-        '',
-      );
+    RegExp(r'^[^a-z0-9åäöé]+|[^a-z0-9åäöé]+$'),
+    '',
+  );
 }
 
 bool _isPrefix(List<String> words, List<String> prefix) {

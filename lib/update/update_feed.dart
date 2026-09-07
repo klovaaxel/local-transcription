@@ -102,7 +102,9 @@ class UpdateManifest {
         return null;
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException('Uppdateringslistan svarade ${response.statusCode}');
+        throw HttpException(
+          'Uppdateringslistan svarade ${response.statusCode}',
+        );
       }
       return UpdateManifest.tryParse(response.body);
     } finally {

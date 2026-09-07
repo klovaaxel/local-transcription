@@ -123,7 +123,9 @@ class UpdateInstaller {
       await _revealMacos(path);
       return;
     }
-    throw UnsupportedError('Auto-uppdatering stöds inte på den här plattformen');
+    throw UnsupportedError(
+      'Auto-uppdatering stöds inte på den här plattformen',
+    );
   }
 
   Future<void> _installWindows(String path) async {

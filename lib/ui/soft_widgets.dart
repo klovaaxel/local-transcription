@@ -72,11 +72,7 @@ class SoftPage extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: SoftSpace.lg),
                         child: Row(
-                          children: [
-                            ?leading,
-                            const Spacer(),
-                            ?trailing,
-                          ],
+                          children: [?leading, const Spacer(), ?trailing],
                         ),
                       ),
                     Text(title, style: theme.textTheme.displaySmall),

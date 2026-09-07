@@ -49,9 +49,9 @@ class SessionStore {
     }
     await _writeIndex(sessions);
     final dir = await sessionDir(session.id);
-    await File(
-      p.join(dir.path, 'session.json'),
-    ).writeAsString(const JsonEncoder.withIndent('  ').convert(session.toJson()));
+    await File(p.join(dir.path, 'session.json')).writeAsString(
+      const JsonEncoder.withIndent('  ').convert(session.toJson()),
+    );
   }
 
   Future<void> delete(String id) async {
@@ -71,9 +71,8 @@ class SessionStore {
   Future<void> _writeIndex(List<LectureSession> sessions) async {
     sessions.sort((a, b) => b.startedAt.compareTo(a.startedAt));
     await (await _indexFile()).writeAsString(
-      const JsonEncoder.withIndent(
-        '  ',
-      ).convert(sessions.map((s) => s.toJson()).toList()),
+      const JsonEncoder.withIndent('  ')
+          .convert(sessions.map((s) => s.toJson()).toList()),
     );
   }
 }

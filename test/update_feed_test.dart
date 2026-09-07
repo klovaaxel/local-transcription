@@ -27,10 +27,7 @@ void main() {
       expect(manifest.build, 2);
       expect(manifest.notes, 'Bättre live-text.');
       expect(manifest.artifacts.length, 2);
-      expect(
-        manifest.artifacts['windows']!.url.host,
-        'github.com',
-      );
+      expect(manifest.artifacts['windows']!.url.host, 'github.com');
       expect(
         manifest.artifacts['windows']!.url.path,
         '/klovaaxel/local-transcription/releases/latest/download/'

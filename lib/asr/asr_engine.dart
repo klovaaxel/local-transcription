@@ -44,10 +44,7 @@ class AsrEngine {
     _events?.close();
     _events = ReceivePort();
     _events!.listen(_onEvent);
-    _commands!.send({
-      'cmd': 'listen',
-      'port': _events!.sendPort,
-    });
+    _commands!.send({'cmd': 'listen', 'port': _events!.sendPort});
     _commands!.send({
       'cmd': 'configure',
       'encoder': paths.encoder,
@@ -185,8 +182,10 @@ void _asrIsolateMain(SendPort ready) {
     while (offset < samples.length) {
       final end = (offset + _windowSamples).clamp(0, samples.length);
       final slice = samples.sublist(offset, end);
-      emitCaption(decodeSamples(Float32List.fromList(slice), sampleRate),
-          authoritative: true);
+      emitCaption(
+        decodeSamples(Float32List.fromList(slice), sampleRate),
+        authoritative: true,
+      );
       if (end >= samples.length) {
         break;
       }
@@ -200,8 +199,10 @@ void _asrIsolateMain(SendPort ready) {
     }
     while (!vad!.isEmpty()) {
       final segment = vad!.front();
-      emitCaption(decodeSamples(segment.samples, _sampleRate),
-          authoritative: true);
+      emitCaption(
+        decodeSamples(segment.samples, _sampleRate),
+        authoritative: true,
+      );
       vad!.pop();
     }
   }

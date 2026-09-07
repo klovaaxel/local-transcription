@@ -148,16 +148,8 @@ class SoftPalette extends ThemeExtension<SoftPalette> {
   /// lit edge, and two shadow stops the way a real object reads — a tight one
   /// for the contact edge, a wide soft one for the cast.
   List<BoxShadow> get floatingShadow => [
-    BoxShadow(
-      color: shadowDark,
-      offset: const Offset(0, 2),
-      blurRadius: 6,
-    ),
-    BoxShadow(
-      color: shadowDark,
-      offset: const Offset(0, 12),
-      blurRadius: 32,
-    ),
+    BoxShadow(color: shadowDark, offset: const Offset(0, 2), blurRadius: 6),
+    BoxShadow(color: shadowDark, offset: const Offset(0, 12), blurRadius: 32),
   ];
 
   @override

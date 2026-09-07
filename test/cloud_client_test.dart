@@ -92,36 +92,41 @@ void main() {
     );
 
     expect(text, 'Hej på er');
-    expect(sent.url.toString(), 'https://api.berget.ai/v1/audio/transcriptions');
+    expect(
+      sent.url.toString(),
+      'https://api.berget.ai/v1/audio/transcriptions',
+    );
     expect(sent.headers['content-type'], startsWith('multipart/form-data'));
     expect(body, contains('KBLab/kb-whisper-large'));
     expect(body, contains('del-1.wav'));
     expect(body, contains('name="language"'));
   });
 
-  test('a rejected key becomes a Swedish message with the provider detail',
-      () async {
-    final client = OpenAiCompatibleClient(
-      config: _config,
-      client: MockClient((request) async {
-        return http.Response(
-          jsonEncode({
-            'error': {'message': 'Invalid API key'},
-          }),
-          401,
-        );
-      }),
-    );
+  test(
+    'a rejected key becomes a Swedish message with the provider detail',
+    () async {
+      final client = OpenAiCompatibleClient(
+        config: _config,
+        client: MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'error': {'message': 'Invalid API key'},
+            }),
+            401,
+          );
+        }),
+      );
 
-    await expectLater(
-      client.chat(turns: const [ChatTurn.user('x')]),
-      throwsA(
-        isA<CloudException>()
-            .having((e) => e.message, 'message', contains('API-nyckeln'))
-            .having((e) => e.message, 'message', contains('Invalid API key')),
-      ),
-    );
-  });
+      await expectLater(
+        client.chat(turns: const [ChatTurn.user('x')]),
+        throwsA(
+          isA<CloudException>()
+              .having((e) => e.message, 'message', contains('API-nyckeln'))
+              .having((e) => e.message, 'message', contains('Invalid API key')),
+        ),
+      );
+    },
+  );
 
   test('an empty key never reaches the network', () async {
     var called = false;

@@ -7,10 +7,7 @@ void main() {
   testWidgets('home shows empty state and record action', (tester) async {
     final state = LectureAppState();
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: state,
-        child: const LectureApp(),
-      ),
+      ChangeNotifierProvider.value(value: state, child: const LectureApp()),
     );
     expect(find.text('Föreläsningar'), findsOneWidget);
     expect(find.text('Spela in'), findsOneWidget);

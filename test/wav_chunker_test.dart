@@ -57,32 +57,34 @@ void main() {
     expect(part.length, 44 + 5 * _bytesPerSecond);
   });
 
-  test('a long lecture is cut into overlapping parts that cover it all',
-      () async {
-    final file = await _recording(dir, const Duration(seconds: 30));
-    final chunker = await WavChunker.open(
-      file,
-      part: const Duration(seconds: 10),
-      overlap: const Duration(seconds: 2),
-    );
-
-    expect(chunker.count, greaterThan(1));
-
-    final ranges = chunker.ranges;
-    expect(ranges.first.start, 0);
-    expect(
-      ranges.last.start + ranges.last.length,
-      30 * _bytesPerSecond,
-      reason: 'the tail of the lecture must be uploaded too',
-    );
-    for (var i = 1; i < ranges.length; i++) {
-      expect(
-        ranges[i].start,
-        lessThan(ranges[i - 1].start + ranges[i - 1].length),
-        reason: 'parts overlap so a sentence on the seam survives',
+  test(
+    'a long lecture is cut into overlapping parts that cover it all',
+    () async {
+      final file = await _recording(dir, const Duration(seconds: 30));
+      final chunker = await WavChunker.open(
+        file,
+        part: const Duration(seconds: 10),
+        overlap: const Duration(seconds: 2),
       );
-    }
-  });
+
+      expect(chunker.count, greaterThan(1));
+
+      final ranges = chunker.ranges;
+      expect(ranges.first.start, 0);
+      expect(
+        ranges.last.start + ranges.last.length,
+        30 * _bytesPerSecond,
+        reason: 'the tail of the lecture must be uploaded too',
+      );
+      for (var i = 1; i < ranges.length; i++) {
+        expect(
+          ranges[i].start,
+          lessThan(ranges[i - 1].start + ranges[i - 1].length),
+          reason: 'parts overlap so a sentence on the seam survives',
+        );
+      }
+    },
+  );
 
   test('every part is a WAV a provider can read', () async {
     final file = await _recording(dir, const Duration(seconds: 25));

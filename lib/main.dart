@@ -10,12 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = LectureAppState();
   await state.init();
-  runApp(
-    ChangeNotifierProvider.value(
-      value: state,
-      child: const LectureApp(),
-    ),
-  );
+  runApp(ChangeNotifierProvider.value(value: state, child: const LectureApp()));
 }
 
 class LectureApp extends StatelessWidget {
@@ -31,10 +26,7 @@ class LectureApp extends StatelessWidget {
       builder: (context, child) {
         return Stack(
           clipBehavior: Clip.none,
-          children: [
-            ?child,
-            const SoftToastLayer(),
-          ],
+          children: [?child, const SoftToastLayer()],
         );
       },
       home: const HomePage(),

@@ -40,8 +40,8 @@ LectureSession _readySession() {
   return LectureSession(
     id: 's1',
     startedAt: DateTime(2026, 9, 1, 10),
-      transcript: 'Vi gick igenom unionsupplösningen.',
-    summary: const NewsletterSummary(
+    transcript: 'Vi gick igenom unionsupplösningen.',
+    summary: NewsletterSummary.legacy(
       discussed: 'Unionsupplösningen 1905.',
       decided: 'Prov på fredag.',
       absentees: 'Läs kapitel 4.',
@@ -49,10 +49,7 @@ LectureSession _readySession() {
   );
 }
 
-Widget _app({
-  required LectureAppState state,
-  required Widget home,
-}) {
+Widget _app({required LectureAppState state, required Widget home}) {
   return ChangeNotifierProvider.value(
     value: state,
     child: MaterialApp(
@@ -76,7 +73,10 @@ void main() {
     state.sessions = [session];
 
     await tester.pumpWidget(
-      _app(state: state, home: SessionPage(sessionId: session.id)),
+      _app(
+        state: state,
+        home: SessionPage(sessionId: session.id),
+      ),
     );
     await tester.pump();
 
@@ -90,9 +90,7 @@ void main() {
 
   testWidgets('settings leading slot is back', (tester) async {
     final state = LectureAppState(store: MemorySessionStore([]));
-    await tester.pumpWidget(
-      _app(state: state, home: const SettingsPage()),
-    );
+    await tester.pumpWidget(_app(state: state, home: const SettingsPage()));
     await tester.pump();
 
     expect(find.byType(SoftBackButton), findsOneWidget);
@@ -102,27 +100,33 @@ void main() {
     );
   });
 
-  testWidgets('settings offers the 7B brief model', (tester) async {
+  testWidgets('settings picks the brief model automatically, override exists', (
+    tester,
+  ) async {
     final state = LectureAppState(store: MemorySessionStore([]));
-    await tester.pumpWidget(
-      _app(state: state, home: const SettingsPage()),
-    );
+    await tester.pumpWidget(_app(state: state, home: const SettingsPage()));
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Qwen 7B (dator, ~4,7 GB)'),
-      120,
+    await tester.scrollUntilVisible(find.text('Välj modell automatiskt'), 120);
+    await tester.ensureVisible(find.text('Välj modell automatiskt'));
+    await tester.pumpAndSettle();
+    expect(find.text('Välj modell automatiskt'), findsOneWidget);
+    // With auto on, the model list is hidden behind the toggle.
+    expect(find.text('Qwen 7B (dator, ~4,7 GB)'), findsNothing);
+
+    await tester.tap(
+      find.widgetWithText(SwitchListTile, 'Välj modell automatiskt'),
     );
+    await tester.pumpAndSettle();
     expect(find.text('Qwen 1.5B (telefon, ~1,1 GB)'), findsOneWidget);
     expect(find.text('Qwen 7B (dator, ~4,7 GB)'), findsOneWidget);
   });
 
-  testWidgets('settings hides the provider card until cloud is picked',
-      (tester) async {
+  testWidgets('settings hides the provider card until cloud is picked', (
+    tester,
+  ) async {
     final state = LectureAppState(store: MemorySessionStore([]));
-    await tester.pumpWidget(
-      _app(state: state, home: const SettingsPage()),
-    );
+    await tester.pumpWidget(_app(state: state, home: const SettingsPage()));
     await tester.pump();
 
     expect(find.text('Leverantör'), findsNothing);
@@ -132,9 +136,7 @@ void main() {
   testWidgets('cloud transcription reveals the Berget fields', (tester) async {
     final state = LectureAppState(store: MemorySessionStore([]));
     state.settings.transcriber = TranscriberKind.cloud;
-    await tester.pumpWidget(
-      _app(state: state, home: const SettingsPage()),
-    );
+    await tester.pumpWidget(_app(state: state, home: const SettingsPage()));
     await tester.pump();
 
     await tester.scrollUntilVisible(find.text('Leverantör'), 120);
@@ -171,7 +173,10 @@ void main() {
     state.sessions = [session];
 
     await tester.pumpWidget(
-      _app(state: state, home: SessionPage(sessionId: session.id)),
+      _app(
+        state: state,
+        home: SessionPage(sessionId: session.id),
+      ),
     );
     await tester.pump();
 

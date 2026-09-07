@@ -15,8 +15,7 @@ void main() {
   });
 
   test('a restated window stays as replaceable partial', () {
-    final buffer = LiveCaptionBuffer()
-      ..commit('hej alla barn vi tar rast');
+    final buffer = LiveCaptionBuffer()..commit('hej alla barn vi tar rast');
     buffer.setPartial('hej alla barn vi tar rast');
     expect(buffer.display, 'hej alla barn vi tar rast');
     buffer.setPartial('och sen lunch');

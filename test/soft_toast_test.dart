@@ -7,10 +7,7 @@ import 'package:lecture_local/ui/soft_theme.dart';
 import 'package:provider/provider.dart';
 
 Widget _app(LectureAppState state) {
-  return ChangeNotifierProvider.value(
-    value: state,
-    child: const LectureApp(),
-  );
+  return ChangeNotifierProvider.value(value: state, child: const LectureApp());
 }
 
 void main() {
@@ -81,7 +78,10 @@ void main() {
     state.notice('Kopierat. Klistra in i skolplattformen.');
     await tester.pump();
     await tester.pump(SoftMotion.enter);
-    expect(find.text('Kopierat. Klistra in i skolplattformen.'), findsOneWidget);
+    expect(
+      find.text('Kopierat. Klistra in i skolplattformen.'),
+      findsOneWidget,
+    );
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
