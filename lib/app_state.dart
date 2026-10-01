@@ -16,10 +16,12 @@ import 'asr/wav_sink.dart';
 import 'cloud/openai_compatible.dart';
 import 'data/app_settings.dart';
 import 'data/lecture_session.dart';
+import 'data/session_entry.dart';
 import 'data/session_store.dart';
 import 'models/model_catalog.dart';
 import 'perf/device_bench.dart';
 import 'perf/llm_speed_probe.dart';
+import 'summarize/brief_pipeline.dart' show BriefCancelled;
 import 'summarize/cloud_summarizer.dart';
 import 'summarize/local_summarizer.dart';
 import 'summarize/summarizer.dart';
@@ -42,9 +44,110 @@ class LectureAppState extends ChangeNotifier {
   final _uuid = const Uuid();
 
   AppSettings settings = AppSettings();
-  List<LectureSession> sessions = [];
+
+  /// The lecture list, manifest only. Everything the cards render is derived
+  /// at write time, so the home screen costs one small file however long the
+  /// lectures in it are. The lecture itself is read per screen, from its own
+  /// file.
+  List<SessionEntry> sessions = [];
   LectureSession? active;
   String? statusMessage;
+
+  /// The full lecture behind a manifest row, read on demand. Throws if the id
+  /// is unknown -- a row without a file means a half-finished write, and the
+  /// session screen reports that rather than showing an empty lecture.
+  Future<LectureSession> loadSession(String id) => store.load(id);
+
+  /// A caption event, for tests that need to drive the caption stream without
+  /// a Whisper model. [_onCaption] is the whole of the behaviour.
+  @visibleForTesting
+  Future<void> onCaptionForTest(CaptionEvent event) async {
+    _onCaption(event);
+    // The append is deliberately not awaited, so let it land before counting.
+    await Future<void>.delayed(Duration.zero);
+  }
+
+  /// A lecture left mid-flight by a killed process. Its status on disk is a
+  /// promise nothing is going to keep, so the card would say "Spelar in" for
+  /// good. Reconcile each one: say it was interrupted, fold in whatever the
+  /// caption log caught, and drop an audio path that is not there -- offering
+  /// "Transkribera om" for a file that does not exist is the one way this
+  /// makes things worse than leaving it alone.
+  ///
+  /// Runs once at launch, before anything reads [sessions] for display. Every
+  /// write is a [SessionStore.save], so a lecture reconciled twice is the same
+  /// lecture twice rather than a second row.
+  /// The launch path as it reaches the reconciliation: read the manifest, then
+  /// settle whatever it found. [init] does this as its first two statements --
+  /// separating them is only so a test does not need settings and package info.
+  @visibleForTesting
+  Future<void> reconcileForTest() async {
+    sessions = await store.list();
+    await _reconcileInterrupted();
+  }
+
+  Future<void> _reconcileInterrupted() async {
+    final stranded = sessions.where((e) => _inProgress.contains(e.status)).toList();
+    if (stranded.isEmpty) {
+      return;
+    }
+    for (final entry in stranded) {
+      try {
+        final session = await _loadOrRebuild(entry);
+        session.status = SessionStatus.interrupted;
+
+        // A kill cuts the recording off at an unknown point, so there is no
+        // honest value to invent for `endedAt` -- leave whatever was written.
+        if (session.displayTranscript.trim().isEmpty) {
+          // The log is the one copy written outside the process that died.
+          final recovered = await store.readCaptions(session.id);
+          if (recovered.trim().isNotEmpty) {
+            session.liveCaptions = recovered;
+          }
+        }
+
+        final audio = session.audioPath;
+        if (audio != null && !await File(audio).exists()) {
+          session.audioPath = null;
+        }
+
+        await store.save(session);
+      } on Object {
+        // A lecture that cannot be read back is left exactly as it was. The
+        // store writes the session before the manifest row, so this should not
+        // happen, and a row that is unreachable is a smaller problem than one
+        // that was rewritten into a state nobody asked for.
+      }
+    }
+    sessions = await store.list();
+  }
+
+  /// Statuses that mean work is genuinely in flight. `active` is null at
+  /// launch, so anything still claiming one of these was left behind.
+  static const _inProgress = {
+    SessionStatus.recording,
+    SessionStatus.transcribing,
+    SessionStatus.summarizing,
+  };
+
+  /// The lecture behind a row, or a stand-in built from the row itself when
+  /// the session file is missing. A row with no file should not exist -- the
+  /// store writes the file first -- but a store written by an older build, or
+  /// one whose file was deleted under it, can leave one, and a row in a
+  /// progress status with no file behind it is exactly the case this method
+  /// exists to stop lying about.
+  Future<LectureSession> _loadOrRebuild(SessionEntry entry) async {
+    try {
+      return await store.load(entry.id);
+    } on StateError {
+      return LectureSession(
+        id: entry.id,
+        startedAt: entry.startedAt,
+        endedAt: entry.endedAt,
+        audioPath: entry.audioPath,
+      );
+    }
+  }
 
   /// True when [statusMessage] is a failure. The toast keeps those up until
   /// they are dismissed; confirmations clear themselves.
