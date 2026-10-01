@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
 import '../../data/lecture_session.dart';
-import '../../summarize/newsletter.dart';
+import '../../data/session_entry.dart';
 import '../../ui/soft_buttons.dart';
 import '../../ui/soft_dates.dart';
 import '../../ui/soft_icons.dart';
@@ -44,7 +44,7 @@ class HomePage extends StatelessWidget {
               itemCount: state.sessions.length,
               separatorBuilder: (_, _) => const SizedBox(height: SoftSpace.md),
               itemBuilder: (context, index) {
-                return _LectureCard(session: state.sessions[index]);
+                return _LectureCard(entry: state.sessions[index]);
               },
             ),
     );
@@ -94,27 +94,30 @@ class _EmptyLectures extends StatelessWidget {
 }
 
 class _LectureCard extends StatelessWidget {
-  const _LectureCard({required this.session});
+  const _LectureCard({required this.entry});
 
-  final LectureSession session;
+  final SessionEntry entry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final p = SoftPalette.of(context);
-    final preview = session.summary?.discussed ?? session.displayTranscript;
-    final subtitle = preview.trim().isEmpty
-        ? _statusLabel(session)
-        : (preview.length > 110 ? '${preview.substring(0, 110)}…' : preview);
-    final name = session.autoTitle;
-    final date = lectureDateLine(session.startedAt);
-    final clock = lectureClock(session.startedAt);
+    // The preview is cut from the summary, or from the transcript when there
+    // is no brief yet, when the row was written -- see [SessionEntry]. Keeping
+    // that here instead would mean reading every lecture's full text to draw
+    // the list.
+    final subtitle = entry.preview.trim().isEmpty
+        ? _statusLabel(entry.status)
+        : entry.preview;
+    final name = entry.cachedTitle;
+    final date = lectureDateLine(entry.startedAt);
+    final clock = lectureClock(entry.startedAt);
 
     return SoftCard(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => SessionPage(sessionId: session.id),
+            builder: (_) => SessionPage(sessionId: entry.id),
           ),
         );
       },
@@ -151,15 +154,16 @@ class _LectureCard extends StatelessWidget {
     );
   }
 
-  String _statusLabel(LectureSession session) {
-    return switch (session.status) {
+  /// Only reached when [SessionEntry.preview] is empty, which means neither
+  /// the brief nor the transcript had text to preview -- so a ready lecture
+  /// here is one with nothing to write a brief from yet.
+  String _statusLabel(SessionStatus status) {
+    return switch (status) {
       SessionStatus.recording => 'Spelar in',
       SessionStatus.transcribing => 'Transkriberar',
       SessionStatus.summarizing => 'Skriver underlag',
-      SessionStatus.ready =>
-        session.summary == null
-            ? 'Redo att skriva underlag'
-            : NewsletterSummary.discussedHeading,
+      SessionStatus.ready => 'Redo att skriva underlag',
+      SessionStatus.interrupted => 'Avbruten',
     };
   }
 }
