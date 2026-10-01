@@ -8,6 +8,9 @@ release live under Unreleased.
 
 - Windows builds bundle the Visual C++ runtime again. 1.0.1 shipped without
   it, so the app stopped at launch with a missing `VCRUNTIME140.dll` (#3).
+- Releases attach the per-ABI Android APKs again. Only the 201 MB universal
+  file was published, so emulator and old-phone testers had no small download
+  to install (#1).
 
 ## 1.0.1 (2026-09)
 

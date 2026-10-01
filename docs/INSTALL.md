@@ -43,7 +43,7 @@ APK:en installeras vid sidan av Play — den ligger inte i butiken.
 1. Ta **`Forelasning-1.0.0-android-arm64-v8a.apk`**. Det är rätt fil för i
    stort sett alla telefoner sålda de senaste åtta åren.
    - Väldigt gammal telefon? Prova `armeabi-v7a`.
-   - Emulator på dator? `x86_64`.
+   - Emulator på dator, till exempel Waydroid? `x86_64`.
 2. Öppna filen i Filer eller nedladdningslistan.
 3. Android frågar om appen får installera okända appar — säg ja för den app du
    öppnade filen från (oftast Files eller Chrome). Du kan slå av det efteråt.
