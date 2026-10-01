@@ -239,6 +239,29 @@ class LectureAppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// What a brief is doing while it runs, and how far along it is. Null when no
+  /// brief is in flight.
+  ///
+  /// A brief is minutes of local compute behind a single unchanging
+  /// placeholder, so without this the teacher cannot tell a forty-second job
+  /// from a ten-minute one. The phases are the honest part: on a first run the
+  /// wait is mostly a multi-gigabyte download, and a decode counter would say
+  /// "0/1" through all of it.
+  String? briefPhase;
+  int briefDone = 0;
+  int briefTotal = 0;
+
+  Summarizer? _runningBrief;
+
+  /// True while a brief can still be stopped. The session screen puts its
+  /// Avbryt next to this.
+  bool get briefRunning => _runningBrief != null;
+
+  /// Stop the brief in flight. Unwinds at the next chunk boundary -- see
+  /// [BriefPipeline.cancel] for why it cannot be instant, and why that is
+  /// still worth having.
+  void cancelBrief() => _runningBrief?.cancel();
+
   Future<void> refreshModelFlags() async {
     asrReady = await downloader.asrReady(settings.effectiveAsrSize);
     llmReady = await downloader.llmReady(size: settings.effectiveLlmSize);
@@ -548,14 +571,23 @@ class LectureAppState extends ChangeNotifier {
         throw StateError('Ingen transkription att sammanfatta.');
       }
       session.status = SessionStatus.summarizing;
-      await store.upsert(session);
-      notifyListeners();
+      await store.save(session);
+      void phase(String what) {
+        briefPhase = what;
+        briefDone = 0;
+        briefTotal = 0;
+        notifyListeners();
+      }
 
+      phase('startar');
       void briefProgress(int done, int total) {
-        if (total <= 1) {
-          return;
-        }
-        statusMessage = 'Skriver underlag ($done/$total)…';
+        briefDone = done;
+        briefTotal = total;
+        // A one-chunk brief reports 1/1 and never moves, which is not progress
+        // -- it is a countdown that finished. Say which part is being written.
+        statusMessage = total <= 1
+            ? 'Skriver underlag…'
+            : 'Skriver underlag ($done/$total)…';
         notifyListeners();
       }
 
@@ -568,6 +600,7 @@ class LectureAppState extends ChangeNotifier {
         );
       } else {
         final size = settings.effectiveLlmSize;
+        phase('hämtar modell');
         final modelPath = await downloader.ensureLlm(
           size: size,
           onProgress: _onDownload,
@@ -577,7 +610,9 @@ class LectureAppState extends ChangeNotifier {
         // the NEXT brief+download, but this run keeps the spec that matches
         // the file already on the device.
         final spec = ModelCatalog.llm(size);
+        phase('mäter hastighet');
         await _speedProbeLlm(size, modelPath);
+        phase('laddar modell');
         summarizer = LocalLlmSummarizer(
           modelPath: modelPath,
           spec: spec,
@@ -589,7 +624,11 @@ class LectureAppState extends ChangeNotifier {
         );
       }
 
+      // Set before the first decode so a cancel that arrives during the
+      // question-building phase is not lost.
+      _runningBrief = summarizer;
       try {
+        phase('skriver underlag');
         final started = Stopwatch()..start();
         session.summary = await summarizer.summarize(transcript);
         started.stop();
@@ -597,12 +636,20 @@ class LectureAppState extends ChangeNotifier {
           await _calibrateLlm(transcript.length, started.elapsedMilliseconds);
         }
         session.error = null;
+      } on BriefCancelled {
+        // Not an error: the teacher asked for this. Leave whatever the run had
+        // finished -- an earlier draft is still better than none -- and say so
+        // through the toast rather than the failure channel.
+        statusMessage = null;
+        session.error = null;
       } catch (e) {
         session.error = e.toString();
         rethrow;
       } finally {
+        _runningBrief = null;
+        briefPhase = null;
         session.status = SessionStatus.ready;
-        await store.upsert(session);
+        await store.save(session);
         sessions = await store.list();
       }
     });
