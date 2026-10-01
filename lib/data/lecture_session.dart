@@ -1,6 +1,19 @@
 import '../summarize/newsletter.dart';
 
-enum SessionStatus { recording, ready, transcribing, summarizing }
+enum SessionStatus {
+  recording,
+  ready,
+  transcribing,
+  summarizing,
+
+  /// The app died while the lecture was in flight, so whatever it says about
+  /// progress was a promise nobody finished. Not an error -- the recording and
+  /// whatever the caption log caught are real and worth reading -- and not
+  /// `ready`, because the work that was under way still has to be redone.
+  /// Written by [LectureAppState] at launch, never by the recording path
+  /// itself; a status of `recording` on disk therefore always means this.
+  interrupted,
+}
 
 class LectureSession {
   LectureSession({
