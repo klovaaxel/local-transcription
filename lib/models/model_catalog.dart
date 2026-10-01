@@ -1,4 +1,4 @@
-enum AsrModelSize { small, medium }
+enum AsrModelSize { small, medium, large }
 
 enum LlmModelSize { small, medium, large }
 
@@ -112,45 +112,56 @@ class ModelCatalog {
 
   static const llmSmall = LlmModelSpec(
     size: LlmModelSize.small,
-    label: 'Qwen 1.5B (telefon, ~1,1 GB)',
+    label: 'Qwen 3.5 2B (telefon, ~1,3 GB)',
     file: RemoteFile(
-      fileName: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
-      url: 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf',
+      fileName: 'Qwen3.5-2B-Q4_K_M.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf',
     ),
     contextSize: 4096,
     compactMaxChars: 8000,
   );
 
   /// The phone default under auto pick: the A/B harness (test/
-  /// brief_probe_test.dart, feedback/quality/SCORES.md) showed the 3B keeps
-  /// the Qwen prompt-following the 1.5B lacks, at ~2 GB and phone-GPU speed.
+  /// brief_probe_test.dart, feedback/quality/SCORES.md) showed the middle
+  /// tier keeps the Qwen prompt-following the smallest tier lacks, at a size
+  /// a phone GPU can still decode. The Qwen2.5 measurement behind that pick
+  /// predates this generation — re-run the harness before trusting it for
+  /// Qwen3.5-4B.
   static const llmMedium = LlmModelSpec(
     size: LlmModelSize.medium,
-    label: 'Qwen 3B (mobil, ~2 GB)',
+    label: 'Qwen 3.5 4B (mobil, ~2,7 GB)',
     file: RemoteFile(
-      fileName: 'qwen2.5-3b-instruct-q4_k_m.gguf',
-      url: 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf',
+      fileName: 'Qwen3.5-4B-Q4_K_M.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf',
     ),
     contextSize: 8192,
     compactMaxChars: 12000,
   );
 
+  /// Desktop default: the SAME 4B weights as [llmMedium], with a window wide
+  /// enough for a 45-minute lecture in one chunk (no map/reduce merge, which
+  /// is where the 3B used to drop the prov). Same GGUF on purpose — the
+  /// teacher downloads 2.7 GB once, and both tiers then differ only in how
+  /// much fits per pass.
+  ///
+  /// Qwen3.5-9B was evaluated here and rejected on measurement, not taste:
+  /// Q4_K_M (5.68 GB) cannot get a context on a 6 GB card, and the only
+  /// smaller rung that fits (UD-IQ3_XXS, 3.83 GB) hard-crashes inside
+  /// prefill on this llama.cpp build for the qwen35 hybrid architecture —
+  /// at 16384 and 8192, on Vulkan and CPU. A model that cannot load or
+  /// prefill is worse than a smaller model that can, so the large tier
+  /// prefers a window over a parameter count. Do not retry the 9B without
+  /// a llama.cpp build where IQ3 prefill survives; the size ladder has no
+  /// rung that both fits 6 GB and runs.
   static const llmLarge = LlmModelSpec(
     size: LlmModelSize.large,
-    label: 'Qwen 7B (dator, ~4,7 GB)',
+    label: 'Qwen 3.5 4B, stort fönster (dator, ~2,7 GB)',
     file: RemoteFile(
-      fileName: 'qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
-      url: 'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf',
+      fileName: 'Qwen3.5-4B-Q4_K_M.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf',
     ),
-    shards: [
-      RemoteFile(
-        fileName: 'qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf',
-        url: 'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf',
-      ),
-    ],
-    contextSize: 14336,
+    contextSize: 16384,
     compactMaxChars: 24000,
-    storageLabel: 'qwen2.5-7b-instruct-q4_k_m (2 filer)',
   );
 
   static LlmModelSpec llm(LlmModelSize size) {
@@ -198,7 +209,35 @@ class ModelCatalog {
     ),
   );
 
+  /// The best Swedish kb-whisper has, and the desktop default. Same repo
+  /// and same three-file layout as [small] and [medium], so it rides the
+  /// identical sherpa-onnx path — only the auto pick stays off it on phones,
+  /// where ~3x medium's compute per second of audio would crawl.
+  static const large = AsrModelSpec(
+    size: AsrModelSize.large,
+    label: 'KB-Whisper large (svenska, ~1,8 GB)',
+    encoder: RemoteFile(
+      fileName: 'kb-whisper-large-encoder.int8.onnx',
+      url: '$kbWhisperBase/kb-whisper-large-encoder.int8.onnx',
+    ),
+    decoder: RemoteFile(
+      fileName: 'kb-whisper-large-decoder.int8.onnx',
+      url: '$kbWhisperBase/kb-whisper-large-decoder.int8.onnx',
+    ),
+    tokens: RemoteFile(
+      fileName: 'kb-whisper-large-tokens.txt',
+      url: '$kbWhisperBase/kb-whisper-large-tokens.txt',
+    ),
+  );
+
   static AsrModelSpec asr(AsrModelSize size) {
-    return size == AsrModelSize.medium ? medium : small;
+    switch (size) {
+      case AsrModelSize.small:
+        return small;
+      case AsrModelSize.medium:
+        return medium;
+      case AsrModelSize.large:
+        return large;
+    }
   }
 }

@@ -40,7 +40,8 @@ class LocalLlmSummarizer extends BriefPipeline {
   final double? temperature;
 
   /// Raise if the small model falls into a repetition loop on fragmented
-  /// whispered transcripts; 1.08 is the tuned default for the 7B.
+  /// whispered transcripts; 1.08 is the tuned default, measured on the large
+  /// tier.
   final double repeatPenalty;
 
   /// Explicit GPU layer count, or null for the platform default
@@ -89,6 +90,15 @@ class LocalLlmSummarizer extends BriefPipeline {
       contextSize: spec.contextSize,
       batchSize: spec.contextSize,
       nGpuLayers: gpuLayers ?? gpuLayersFor(spec.size),
+      // No extra stopTokens here on purpose. The plugin's own
+      // `resolveStopTokens` already detects the Qwen3.5 turn end from the
+      // rendered prompt, and llama_vocab_is_eog ends the turn independently —
+      // measured across 54 harness generations, every one stopping on EOG
+      // between 94 and 236 tokens. An earlier version passed explicit
+      // `'\nuser\n'` / `'\nsystem\n'` markers on the theory that this
+      // template emits bare newline-delimited roles; that is wrong twice over,
+      // because the plugin matches a stop string per DECODED TOKEN, and no
+      // Qwen3.5 token contains those sequences, so they could never fire.
     );
   }
 

@@ -11,8 +11,9 @@ abstract final class DeviceBench {
   /// isolate. Pure Dart, memory-light: the score tracks CPU throughput,
   /// which is what the CPU-only paths (phone ASR, non-GPU llama) ride on.
   ///
-  /// A GPU would carry the 7B anyway, so a weak score only downgrades the
-  /// auto model pick — a manual pick always wins (see [AppSettings]).
+  /// A GPU would carry the large brief anyway, so a weak score only
+  /// downgrades the auto model pick — a manual pick always wins (see
+  /// [AppSettings]).
   static Future<double> cpuScoreMbs({
     Duration duration = const Duration(milliseconds: 600),
   }) async {
@@ -45,10 +46,10 @@ double _hashThroughput(Duration duration) {
 }
 
 /// The calibration scale is anchored in real measurements: a known-good
-/// desktop (runs the 7B brief, kb-whisper-medium ASR) measures ~112 MB/s
-/// pure-Dart sha256. Below [cpuWeakMbs] the CPU alone would make the 7B
-/// brief (CPU-only fallback) and medium ASR painful, so the auto pick steps
-/// down a tier.
+/// desktop (runs the large brief, kb-whisper ASR) measures ~112 MB/s
+/// pure-Dart sha256. Below [cpuWeakMbs] the CPU alone would make the large
+/// brief (CPU-only fallback) and any ASR tier above small painful, so the
+/// auto picks step down.
 const cpuWeakMbs = 40.0;
 
 String describeCpuScore(double mbs) {
