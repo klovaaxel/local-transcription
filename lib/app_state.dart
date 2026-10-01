@@ -213,6 +213,7 @@ class LectureAppState extends ChangeNotifier {
   Future<void> init() async {
     settings = await AppSettings.load();
     sessions = await store.list();
+    await _reconcileInterrupted();
     await refreshModelFlags();
     final info = await PackageInfo.fromPlatform();
     _appVersion = info.version;
@@ -914,6 +915,23 @@ class LectureAppState extends ChangeNotifier {
       return current.startsWith(original.substring(0, original.length - 1));
     }
     return false;
+  }
+
+  /// A caption arrived. Split out from the subscription so it can be driven
+  /// directly: which store call this makes is the thing worth a test, and it is
+  /// the one write that used to cost what the whole lecture cost.
+  void _onCaption(CaptionEvent event) {
+    final current = active;
+    if (current == null) {
+      return;
+    }
+    current.liveCaptions = event.text;
+    notifyListeners();
+    // The stream hands over the whole buffer every time and it grows with the
+    // lecture, so this is an append and nothing more: the log diffs the text
+    // itself, and the manifest row is not touched because nothing the card
+    // shows has changed yet.
+    unawaited(store.appendCaptions(current.id, event.text));
   }
 
   void _onPcm(Uint8List chunk) {
