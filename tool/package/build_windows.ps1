@@ -56,22 +56,68 @@ if (-not (Test-Path (Join-Path $bundle 'lecture_local.exe'))) {
 # Redistributable the app dies at launch with a missing-DLL box. App-local
 # deployment is the licensed way to do this and needs no admin, unlike running
 # the redist installer.
-$crt = Get-ChildItem "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" -Directory -ErrorAction SilentlyContinue |
-  Sort-Object FullName -Descending | Select-Object -First 1
-if ($crt) {
-  $crtDlls = @(
-    "msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll",
-    "msvcp140_atomic_wait.dll", "msvcp140_codecvt_ids.dll",
-    "vcruntime140.dll", "vcruntime140_1.dll"
-  )
-  foreach ($dll in $crtDlls) {
-    $src = Join-Path $crt.FullName $dll
-    if (Test-Path $src) { Copy-Item $src (Join-Path $bundle $dll) -Force }
+#
+# Ask vswhere where Visual Studio actually is instead of guessing a path. The
+# version folder is not stable: this was written against "2022\Enterprise" and
+# silently found nothing once the CI image moved to Visual Studio 2026, which
+# installs into "18\Enterprise" under Program Files - and a build that only
+# warns ships a package that cannot start (#3).
+$required = @("msvcp140.dll", "vcruntime140.dll")
+$optional = @(
+  "msvcp140_1.dll", "msvcp140_2.dll", "msvcp140_atomic_wait.dll",
+  "msvcp140_codecvt_ids.dll", "vcruntime140_1.dll"
+)
+
+$crtRoots = @()
+$vswhere = @(
+  "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
+  "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if ($vswhere) {
+  # -products * covers BuildTools, Community and Enterprise; the C++ workload
+  # can be installed into any of them. vswhere reports the exact install path
+  # including the edition folder, so both 18\BuildTools and 18\Enterprise are
+  # found without guessing at a layout.
+  foreach ($install in @(& $vswhere -all -products '*' -property installationPath)) {
+    if ($install -and (Test-Path $install)) {
+      $crtRoots += Get-ChildItem (Join-Path $install 'VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT') -Directory -ErrorAction SilentlyContinue
+    }
   }
-  Write-Host "==> bundled the MSVC runtime from $($crt.Name)"
-} else {
-  Write-Warning "Visual C++ redistributable DLLs not found; testers will need the VC++ Redistributable installed."
 }
+
+# Fallback for a machine with no vswhere: search both Program Files roots. The
+# edition folder is not always directly under the version - VS 2026 BuildTools
+# lands in 18\BuildTools while Enterprise is 18\Enterprise - so match the CRT
+# folder at any depth below the version directory.
+if (-not $crtRoots) {
+  $crtRoots = @(
+    (Join-Path ${env:ProgramFiles} 'Microsoft Visual Studio'),
+    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio')
+  ) | Where-Object { $_ -and (Test-Path $_) } |
+    ForEach-Object {
+      # The CRT folder is the match, so the architecture is its parent - arm64
+      # and x86 installs sit alongside x64 and must not be picked up.
+      Get-ChildItem $_ -Directory -Recurse -Filter 'Microsoft.VC*.CRT' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Parent.Name -eq 'x64' }
+    }
+}
+
+$crt = $crtRoots | Sort-Object FullName -Descending | Select-Object -First 1
+if (-not $crt) {
+  throw "No MSVC runtime found to bundle. ggml.dll needs $($required -join ' and '), so the package would crash on launch. Install the Visual C++ Redistributable, or the 'Desktop development with C++' workload, and build again (#3)."
+}
+
+foreach ($dll in $required + $optional) {
+  $src = Join-Path $crt.FullName $dll
+  if (Test-Path $src) { Copy-Item $src (Join-Path $bundle $dll) -Force }
+}
+
+$stillMissing = $required | Where-Object { -not (Test-Path (Join-Path $bundle $_)) }
+if ($stillMissing) {
+  throw "The MSVC runtime in $($crt.FullName) is missing $($stillMissing -join ', '). Refusing to package a bundle that cannot start (#3)."
+}
+Write-Host "==> bundled the MSVC runtime from $($crt.FullName)"
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
