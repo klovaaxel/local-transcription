@@ -35,7 +35,7 @@ class AsrEngine {
   /// instead of paying the load twice.
   bool get running => _commands != null;
 
-  Future<void> start(AsrPaths paths) async {
+  Future<void> start(AsrPaths paths, {int? numThreads}) async {
     await stop();
     _captions = StreamController<CaptionEvent>.broadcast();
     _configured = Completer<void>();
@@ -53,6 +53,11 @@ class AsrEngine {
       'decoder': paths.decoder,
       'tokens': paths.tokens,
       'vad': paths.vad,
+      // Left to the device when the caller has no opinion, because the caller
+      // only knows the model it picked -- and the model pick counts cores too
+      // (`autoAsrForDevice`), which is why the decoder should not be left on a
+      // constant that ignores them.
+      'numThreads': numThreads ?? asrThreadsForDevice(),
     });
     await _configured!.future.timeout(const Duration(seconds: 120));
   }
@@ -446,7 +451,7 @@ void _asrIsolateMain(SendPort ready) {
                 whisper: whisper,
                 tokens: message['tokens'] as String,
                 modelType: 'whisper',
-                numThreads: 2,
+                numThreads: message['numThreads'] as int,
               ),
             ),
           );
