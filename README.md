@@ -19,7 +19,7 @@ Packaging in [AGENTS.md](AGENTS.md).
 
 ## Run
 
-Install [Flutter](https://docs.flutter.dev/get-started/install) (this machine used `D:\sdk\flutter`). On Windows, turn on **Developer Mode** so plugin symlinks work.
+Install [Flutter](https://docs.flutter.dev/get-started/install) (this machine used `C:\sdk\flutter`). On Windows, turn on **Developer Mode** so plugin symlinks work.
 
 ```text
 flutter pub get
@@ -36,8 +36,9 @@ Models download on first use into the app documents folder (hundreds of MB to ~4
 
 - [AGENTS.md](AGENTS.md) — the developer manual: platform quirks, packaging, model and prompt design.
 - [PRODUCT.md](PRODUCT.md) — product spec and principles.
-- [docs/INSTALL.md](docs/INSTALL.md) — installation for beta testers.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — ground rules for pull requests.
+- [docs/INSTALL.md](docs/INSTALL.md) - installation for beta testers.
+- [CONTRIBUTING.md](CONTRIBUTING.md) - ground rules for pull requests.
+- [docs/REVIEW-2026-09-30.md](docs/REVIEW-2026-09-30.md) - open review findings and the work list from the 2026-09-30 pass.
 
 ## Privacy
 
