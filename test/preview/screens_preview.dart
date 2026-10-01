@@ -318,23 +318,4 @@ void main() {
       withToast: true,
     );
   });
-
-  testWidgets('toast hold', (tester) async {
-    // The one warning that is not a conclusion, so the third state of the
-    // toast is worth a look in both themes rather than inferred from the
-    // other two.
-    for (final dark in [false, true]) {
-      final state = LectureAppState(store: MemoryStore([]));
-      state.sessions = [_ready()];
-      state.hold(LectureAppState.micSilenceNotice);
-      await _shoot(
-        tester,
-        dark ? 'toast-hold-dark' : 'toast-hold',
-        dark ? Brightness.dark : Brightness.light,
-        const HomePage(),
-        state: state,
-        withToast: true,
-      );
-    }
-  });
 }

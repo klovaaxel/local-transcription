@@ -370,6 +370,11 @@ void _asrIsolateMain(SendPort ready) {
   /// reads as silence. `false` from [readWavWindows] means `stop()` landed
   /// between two windows: the recognizer is freed while this walk is still
   /// holding it, which is a crash, so bail out instead of decoding.
+  ///
+  /// The threads are left to the device here. The caller knows which model it
+  /// picked, and the model pick counts cores, so the decoder should not be
+  /// pinned to a constant that ignores them — but scaling it is a separate
+  /// change, and this one is about recovering a killed lecture.
   Future<void> transcribeFileWindows(File file) async {
     await readWavWindows(file, (samples, sampleRate) {
       if (disposing) {

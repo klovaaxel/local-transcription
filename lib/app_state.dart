@@ -471,7 +471,7 @@ class LectureAppState extends ChangeNotifier {
           onProgress: _onDownload,
         );
         downloadProgress = null;
-        await asr.start(paths, numThreads: settings.effectiveAsrThreads);
+        await asr.start(paths);
       }
 
       final id = _uuid.v4();
@@ -855,7 +855,7 @@ class LectureAppState extends ChangeNotifier {
         onProgress: _onDownload,
       );
       downloadProgress = null;
-      await asr.start(paths, numThreads: settings.effectiveAsrThreads);
+      await asr.start(paths);
     }
     try {
       return await asr.transcribeFile(wavPath);
