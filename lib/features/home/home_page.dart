@@ -74,6 +74,13 @@ class _EmptyLectures extends StatelessWidget {
       padding: softBodyPadding,
       child: SoftCard(
         child: Column(
+          // `SoftPage` hands its body an `Expanded`, so this Column has a
+          // finite max height to grow into. A default Column takes
+          // `mainAxisSize.max` and fills it, which turns a two-line empty state
+          // into a full-height panel. Every other body is a scrollable, where
+          // the max is infinite and the default is harmless -- this is the one
+          // place it is not.
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
