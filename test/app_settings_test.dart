@@ -7,30 +7,70 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'llm catalog keeps 1.5B, adds 3B for phones and 7B as the desk option',
+    'llm catalog ships the Qwen3.5 tiers as single-file Q4_K_M GGUFs',
     () {
       expect(
         ModelCatalog.llm(LlmModelSize.small).file.fileName,
-        contains('1.5b'),
+        'Qwen3.5-2B-Q4_K_M.gguf',
       );
       expect(
         ModelCatalog.llm(LlmModelSize.medium).file.fileName,
-        contains('3b'),
+        'Qwen3.5-4B-Q4_K_M.gguf',
       );
-      expect(ModelCatalog.llmLarge.files, hasLength(2));
-      expect(ModelCatalog.llmLarge.file.fileName, contains('00001-of-00002'));
       expect(
-        ModelCatalog.llmLarge.shards.single.fileName,
-        contains('00002-of-00002'),
+        ModelCatalog.llmLarge.files,
+        hasLength(1),
+        reason: 'every Qwen3.5 GGUF is a single file, not the old two-shard 7B',
       );
+      expect(ModelCatalog.llmLarge.shards, isEmpty);
+      for (final size in LlmModelSize.values) {
+        expect(
+          ModelCatalog.llm(size).file.url,
+          startsWith('https://huggingface.co/unsloth/Qwen3.5-'),
+          reason: 'every tier comes from its unsloth GGUF repo',
+        );
+      }
       expect(
         ModelCatalog.llmLarge.contextSize,
         greaterThan(ModelCatalog.llmSmall.contextSize),
       );
+      expect(
+        ModelCatalog.llmMedium.contextSize,
+        lessThan(ModelCatalog.llmLarge.contextSize),
+        reason:
+            'the tiers differ by window, not by weights — the large tier only '
+            'earns its name if it fits a whole lecture in one chunk',
+      );
     },
   );
 
-  test('auto model pick: 3B on phones, 7B on desktop', () {
+  test(
+    'no shipped tier is large enough to fail on a 6 GB card',
+    () {
+      // The Qwen3.5-9B was measured and rejected: 5.68 GB could not get a
+      // context at all on a 6 GB laptop GPU, and the smaller IQ3 rung that
+      // did fit crashed in prefill. These are the guard against a future tier
+      // swap reintroducing a model that cannot load — a test that merely
+      // mirrored the catalog's filenames could not catch that.
+      for (final size in LlmModelSize.values) {
+        final spec = ModelCatalog.llm(size);
+        expect(
+          spec.contextSize,
+          lessThanOrEqualTo(16384),
+          reason: '${spec.label}: batchSize mirrors contextSize, and the KV '
+              'cache has to fit beside the weights on a small card',
+        );
+        expect(
+          spec.label,
+          isNot(contains('9B')),
+          reason: 'the 9B tier was measured unloadable or uncrashable on 6 GB '
+              'hardware — see the llmLarge doc comment',
+        );
+      }
+    },
+  );
+
+  test('auto model pick: 4B on phones, wide window on desktop', () {
     expect(
       AppSettings().effectiveLlmSize,
       LlmModelSize.large,
@@ -43,10 +83,10 @@ void main() {
     );
   });
 
-  test('auto speech model: kb-whisper-medium on desktops, manual wins', () {
+  test('auto speech model: kb-whisper-large on desktops, manual wins', () {
     expect(
       AppSettings().effectiveAsrSize,
-      AsrModelSize.medium,
+      AsrModelSize.large,
       reason: 'the test host is a desktop OS with several cores',
     );
     expect(
@@ -56,18 +96,43 @@ void main() {
     );
   });
 
+  test('kb-whisper-large is the same three files from the same repo', () {
+    final large = ModelCatalog.large;
+    expect(large.size, AsrModelSize.large);
+    expect(ModelCatalog.asr(AsrModelSize.large), same(large));
+    expect(large.encoder.fileName, 'kb-whisper-large-encoder.int8.onnx');
+    expect(large.decoder.fileName, 'kb-whisper-large-decoder.int8.onnx');
+    expect(large.tokens.fileName, 'kb-whisper-large-tokens.txt');
+    for (final file in [large.encoder, large.decoder, large.tokens]) {
+      expect(
+        file.url,
+        contains('/frictional123/sherpa-onnx-kb-whisper-int8/'),
+        reason: 'same base URL as the existing tiers, so no new source',
+      );
+    }
+  });
+
   test('a weak CPU benchmark downgrades the automatic picks', () {
     expect(
       AppSettings(cpuScoreMbs: 112).effectiveLlmSize,
       LlmModelSize.large,
-      reason: 'the reference desktop stays on 7B',
+      reason: 'the reference desktop stays on the large brief tier',
     );
     expect(
       AppSettings(cpuScoreMbs: 20).effectiveLlmSize,
       LlmModelSize.medium,
-      reason: 'a CPU-only 7B brief would take minutes',
+      reason: 'a CPU-only large brief would take minutes',
     );
-    expect(AppSettings(cpuScoreMbs: 20).effectiveAsrSize, AsrModelSize.small);
+    expect(
+      AppSettings(cpuScoreMbs: 20).effectiveAsrSize,
+      AsrModelSize.small,
+      reason: 'the weak line demotes any tier the device rule asked for',
+    );
+    expect(
+      AppSettings(cpuScoreMbs: 112).effectiveAsrSize,
+      AsrModelSize.large,
+      reason: 'a strong desktop keeps kb-whisper-large',
+    );
   });
   test('persists the measured GPU preference for the local brief', () async {
     SharedPreferences.setMockInitialValues({});
@@ -93,7 +158,7 @@ void main() {
       expect(
         fast.applyLlmSpeedBench(5, LlmModelSize.large),
         isFalse,
-        reason: 'the measured reference desktop does ~5 tok/s on the 7B',
+        reason: 'the reference desktop does ~5 tok/s on the large tier',
       );
       expect(fast.effectiveLlmSize, LlmModelSize.large);
 
@@ -132,9 +197,18 @@ void main() {
         reason: 'manual picks are never second-guessed',
       );
 
+      // The speech calibration steps down one tier per measured lecture, so
+      // from the new desktop default it takes large -> medium -> small.
       final slowAsr = AppSettings(cpuScoreMbs: 112);
       expect(slowAsr.applyAsrCalibration(12), isTrue);
+      expect(slowAsr.effectiveAsrSize, AsrModelSize.medium);
+      expect(slowAsr.applyAsrCalibration(12), isTrue);
       expect(slowAsr.effectiveAsrSize, AsrModelSize.small);
+      expect(
+        slowAsr.applyAsrCalibration(12),
+        isFalse,
+        reason: 'small is the floor; nothing left to step down to',
+      );
     },
   );
 
