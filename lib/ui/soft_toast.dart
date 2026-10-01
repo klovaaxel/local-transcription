@@ -43,6 +43,7 @@ class SoftToastLayer extends StatelessWidget {
           progress: state.downloadProgress,
           working: working,
           sticky: state.statusIsError,
+          hold: state.statusIsHold,
           onDismiss: showNotice ? state.clearStatus : null,
         ),
       ),
@@ -57,6 +58,7 @@ class SoftToast extends StatefulWidget {
     required this.message,
     required this.working,
     this.sticky = false,
+    this.hold = false,
     this.progress,
     this.onDismiss,
   });
@@ -67,6 +69,12 @@ class SoftToast extends StatefulWidget {
 
   /// A failure. It waits to be read instead of clearing itself.
   final bool sticky;
+
+  /// A warning whose condition is still true. Like [sticky] it is not on a
+  /// clock, but the difference matters to the reader: an error is over and
+  /// waiting to be understood, a hold is still happening. So it is announced
+  /// as ongoing rather than read as a conclusion.
+  final bool hold;
   final DownloadProgress? progress;
   final VoidCallback? onDismiss;
 
@@ -134,12 +142,13 @@ class _SoftToastState extends State<SoftToast>
     }
   }
 
-  /// Only a plain confirmation is on a clock. Work has no known end, and a
-  /// failure stays until the teacher has seen it.
+  /// Only a plain confirmation is on a clock. Work has no known end, a failure
+  /// stays until the teacher has seen it, and a hold stays until its condition
+  /// clears — none of those is a thing a timer can guess.
   void _restartLife() {
     _life?.cancel();
     final dismiss = widget.onDismiss;
-    if (widget.working || widget.sticky || dismiss == null) {
+    if (widget.working || widget.sticky || widget.hold || dismiss == null) {
       return;
     }
     _life = Timer(_noticeLife, () {
@@ -194,6 +203,7 @@ class _SoftToastState extends State<SoftToast>
         message: widget.visible ? widget.message : _message,
         progress: widget.visible ? widget.progress : _progress,
         working: widget.visible ? widget.working : _working,
+        hold: widget.visible && widget.hold,
         onDismiss: widget.visible ? widget.onDismiss : _onDismiss,
       ),
     );
@@ -205,12 +215,17 @@ class _Plate extends StatelessWidget {
     required this.message,
     required this.working,
     this.progress,
+    this.hold = false,
     this.onDismiss,
   });
 
   final String message;
   final bool working;
   final DownloadProgress? progress;
+
+  /// The condition is still true. Reads as live, not as something already
+  /// finished — see [SoftToast.hold].
+  final bool hold;
   final VoidCallback? onDismiss;
 
   @override
@@ -262,6 +277,15 @@ class _Plate extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (hold) ...[
+            // Stands in for the spinner: nothing is being waited for, the
+            // condition simply has not cleared yet.
+            Padding(
+              padding: const EdgeInsets.only(top: SoftSpace.xs),
+              child: Icon(SoftIcons.alert, size: 18, color: p.danger),
+            ),
+            const SizedBox(width: SoftSpace.md),
+          ],
           if (working) ...[
             Padding(
               // Optical: line the spinner up with the message's cap height.
@@ -291,7 +315,9 @@ class _Plate extends StatelessWidget {
       child: Semantics(
         container: true,
         liveRegion: true,
-        label: message,
+        // A hold is not a report of something done, it is a condition still
+        // true, so it is announced as such rather than read as a conclusion.
+        label: hold ? '$message Fortfarande pågående.' : message,
         button: onDismiss != null,
         child: onDismiss == null
             ? plate

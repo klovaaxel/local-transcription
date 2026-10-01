@@ -49,6 +49,12 @@ class LectureAppState extends ChangeNotifier {
   /// True when [statusMessage] is a failure. The toast keeps those up until
   /// they are dismissed; confirmations clear themselves.
   bool statusIsError = false;
+
+  /// True when [statusMessage] is a warning that clears when its condition is
+  /// met rather than on a clock. "No sound from the microphone" is the case
+  /// this exists for: the teacher cannot dismiss it away, because the
+  /// condition is still true.
+  bool statusIsHold = false;
   DownloadProgress? downloadProgress;
   bool busy = false;
   Duration recordElapsed = Duration.zero;
@@ -77,6 +83,29 @@ class LectureAppState extends ChangeNotifier {
   WavFileSink? _wav;
   Timer? _ticker;
   DateTime? _levelTick;
+  DateTime? _silentSince;
+
+  /// Loudness below which a chunk counts as no sound at all, and how long that
+  /// has to last before the teacher is told. Both are tuned to a classroom:
+  /// 0.02 sits under speech and over a noisy room's hum, and five seconds
+  /// survives a pause mid-sentence. [micHasBeenSilent] carries the reasoning.
+  ///
+  /// Public so a test can assert the meter and the warning cannot drift apart.
+  @visibleForTesting
+  static const double silenceBelow = 0.02;
+
+  /// How long the mic must be silent before the teacher is warned.
+  @visibleForTesting
+  static const Duration micSilenceAfter = Duration(seconds: 5);
+
+  /// The one message a condition-hold is used for so far. A constant because
+  /// the warning, the clearing, and [clearHold]'s callers all compare against
+  /// it, and a typo in any one of them would leave a stale warning up.
+  static const String micSilenceNotice = 'Inget ljud från mikrofonen.';
+
+  /// Said when the sound comes back. Without it a teacher who looked away
+  /// would simply see the warning go and never learn that the mic recovered.
+  static const String micHeardAgainNotice = 'Ljudet är tillbaka.';
 
   Future<void> init() async {
     settings = await AppSettings.load();
@@ -123,6 +152,7 @@ class LectureAppState extends ChangeNotifier {
   void clearStatus() {
     statusMessage = null;
     statusIsError = false;
+    statusIsHold = false;
     notifyListeners();
   }
 
@@ -132,6 +162,32 @@ class LectureAppState extends ChangeNotifier {
   void notice(String message) {
     statusMessage = message;
     statusIsError = false;
+    statusIsHold = false;
+    notifyListeners();
+  }
+
+  /// A warning that stays up until [clearHold], because the condition behind
+  /// it is still true. Deliberately not dismissible: tapping the toast clears
+  /// it, but the caller's next check raises it again, and that is the honest
+  /// outcome — the microphone is still silent, and a warning that could be
+  /// waved away would be one the teacher waves away every time.
+  void hold(String message) {
+    if (statusMessage == message && statusIsHold) {
+      return;
+    }
+    statusMessage = message;
+    statusIsError = false;
+    statusIsHold = true;
+    notifyListeners();
+  }
+
+  /// The condition behind a [hold] is no longer true.
+  void clearHold() {
+    if (!statusIsHold) {
+      return;
+    }
+    statusMessage = null;
+    statusIsHold = false;
     notifyListeners();
   }
 
@@ -331,6 +387,10 @@ class LectureAppState extends ChangeNotifier {
       _pcmSub = stream.listen(_onPcm);
 
       recordElapsed = Duration.zero;
+      // A stale silence start would fire the warning instantly on the next
+      // chunk; a carry-over hold would blame a mic that is now fine.
+      _silentSince = null;
+      clearHold();
       _ticker?.cancel();
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         final start = active?.startedAt;
@@ -350,6 +410,10 @@ class LectureAppState extends ChangeNotifier {
       await _pcmSub?.cancel();
       _pcmSub = null;
       inputLevel = 0;
+      // The lecture is over, so the mic cannot be "silent" any more. Leaving
+      // the hold up would blame the microphone for the recording being stopped.
+      _silentSince = null;
+      clearHold();
       await _recorder.stop();
       _ticker?.cancel();
       await _wav?.close();
@@ -711,6 +775,11 @@ class LectureAppState extends ChangeNotifier {
     busy = true;
     statusMessage = message;
     statusIsError = false;
+    // Work takes over the toast, so a hold that was up is no longer the
+    // message. Recording clears the hold when it stops, but work started
+    // mid-recording (a model download, a manual re-transcribe) would otherwise
+    // leave the flag set and misread the next message as a hold.
+    statusIsHold = false;
     notifyListeners();
     try {
       await body();
@@ -751,7 +820,38 @@ class LectureAppState extends ChangeNotifier {
     _levelTick = now;
     final next = pcm16Level(chunk);
     inputLevel = next > inputLevel ? next : inputLevel * 0.55 + next * 0.45;
+    trackSilence(now: now, level: next);
     notifyListeners();
+  }
+
+  /// Warns when the microphone has heard nothing for [micSilenceAfter], and
+  /// clears the warning the moment it does. Driven from the PCM stream with
+  /// the chunk's own loudness and the time it arrived.
+  ///
+  /// Public only so a test can drive it with an explicit clock: what matters
+  /// here is the elapsed silence, and a test that had to wait out real seconds
+  /// would be slower and no more honest. [now] is a parameter rather than
+  /// [DateTime.now] for the same reason.
+  @visibleForTesting
+  void trackSilence({required DateTime now, required double level}) {
+    if (level >= silenceBelow) {
+      _silentSince = null;
+      // Sound came back. Say so rather than letting the toast vanish: if the
+      // teacher looked away while it was up, silence would leave them thinking
+      // the mic is still broken.
+      if (statusIsHold && statusMessage == micSilenceNotice) {
+        notice(micHeardAgainNotice);
+      }
+      return;
+    }
+    _silentSince ??= now;
+    if (micHasBeenSilent(
+      silentSince: _silentSince,
+      now: now,
+      warnAfter: micSilenceAfter,
+    )) {
+      hold(micSilenceNotice);
+    }
   }
 
   void _onDownload(DownloadProgress progress) {

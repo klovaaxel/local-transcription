@@ -17,6 +17,34 @@ double pcm16Level(Uint8List bytes) {
   return (rms * 5).clamp(0.0, 1.0);
 }
 
+/// True while a mic has produced nothing louder than [silenceBelow] for
+/// [warnAfter], or once it has.
+///
+/// The window is long on purpose. Silence of a second or two is normal between
+/// sentences and while a teacher thinks, so a shorter one would flash during
+/// ordinary pauses and train the eye to ignore it — worse than not warning at
+/// all. The threshold sits under classroom speech and over a quiet room's hum,
+/// so it fires on a muted or unplugged mic rather than on a room that is simply
+/// still.
+///
+/// Pure and clock-free, so the behaviour is testable: pass the time in rather
+/// than reading it, and every caller's own clock stays out of the decision.
+bool micHasBeenSilent({
+  required DateTime? silentSince,
+  required DateTime now,
+  Duration warnAfter = const Duration(seconds: 5),
+  double level = 0,
+  double silenceBelow = 0.02,
+}) {
+  if (level >= silenceBelow) {
+    return false;
+  }
+  if (silentSince == null) {
+    return false;
+  }
+  return now.difference(silentSince) >= warnAfter;
+}
+
 /// True when the last [trailingSeconds] of 16 kHz float audio is below speech.
 bool trailingFloatsAreSilent(
   Float32List samples, {

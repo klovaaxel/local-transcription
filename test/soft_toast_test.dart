@@ -108,6 +108,97 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('a hold waits for its condition, not for a clock', (
+    tester,
+  ) async {
+    final state = LectureAppState();
+    await tester.pumpWidget(_app(state));
+
+    state.hold(LectureAppState.micSilenceNotice);
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+    expect(find.text(LectureAppState.micSilenceNotice), findsOneWidget);
+
+    // Well past the four seconds a confirmation lives for. The microphone is
+    // still silent, so the warning must still be up.
+    await tester.pump(const Duration(seconds: 30));
+    expect(find.text(LectureAppState.micSilenceNotice), findsOneWidget);
+    expect(state.statusIsHold, isTrue);
+
+    state.clearHold();
+    await tester.pumpAndSettle();
+    expect(find.text(LectureAppState.micSilenceNotice), findsNothing);
+  });
+
+  testWidgets('a hold says so to a screen reader', (tester) async {
+    final state = LectureAppState();
+    await tester.pumpWidget(_app(state));
+
+    state.hold(LectureAppState.micSilenceNotice);
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+
+    // Matched on a fragment: bySemanticsLabel compares against the node's own
+    // label, and the text is split across a label and its child.
+    expect(
+      find.bySemanticsLabel(RegExp('Fortfarande pågående')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        RegExp('${LectureAppState.micSilenceNotice} Fortfarande pågående'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a confirmation is not announced as ongoing', (tester) async {
+    final state = LectureAppState();
+    await tester.pumpWidget(_app(state));
+
+    // A hold, then a confirmation, must not leave the ongoing wording behind:
+    // the flag lives with the message, not on the toast.
+    state.hold(LectureAppState.micSilenceNotice);
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+
+    state.notice(LectureAppState.micHeardAgainNotice);
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+
+    expect(
+      find.bySemanticsLabel(RegExp(LectureAppState.micHeardAgainNotice)),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp('Fortfarande pågående')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('a hold can be dismissed but comes straight back', (tester) async {
+    final state = LectureAppState();
+    await tester.pumpWidget(_app(state));
+
+    state.hold(LectureAppState.micSilenceNotice);
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+
+    await tester.tap(find.byKey(const Key('toast-dismiss')));
+    await tester.pumpAndSettle();
+    expect(find.text(LectureAppState.micSilenceNotice), findsNothing);
+
+    // The microphone is still silent, so the caller's next check raises it
+    // again. A warning that could be waved away would be waved away always.
+    // Two chunks, because the run starts at the first quiet one.
+    final now = DateTime(2030, 1, 1);
+    state.trackSilence(level: 0, now: now);
+    state.trackSilence(level: 0, now: now.add(const Duration(seconds: 6)));
+    await tester.pump();
+    await tester.pump(SoftMotion.enter);
+    expect(find.text(LectureAppState.micSilenceNotice), findsOneWidget);
+  });
+
   testWidgets('a failure waits to be read', (tester) async {
     final state = LectureAppState();
     await tester.pumpWidget(_app(state));
