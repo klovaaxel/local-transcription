@@ -7,6 +7,13 @@ import 'summarizer.dart';
 
 typedef BriefProgress = void Function(int completed, int total);
 
+/// The teacher stopped a brief. Not a failure: nothing went wrong, the work
+/// simply is not wanted, so callers must not put this in `session.error` or
+/// report it through the toast as a problem.
+class BriefCancelled implements Exception {
+  const BriefCancelled();
+}
+
 /// Map/reduce over a lecture transcript, shared by the local model and the
 /// cloud provider. A lecture longer than the model window is split into
 /// overlapping parts, each part becomes a partial brief, and the parts are
@@ -82,6 +89,34 @@ abstract class BriefPipeline implements Summarizer {
   /// Always runs, even when [complete] throws.
   Future<void> release() async {}
 
+  /// Whether [cancel] has been called. A summarizer is built per brief, so
+  /// this is per brief and never needs clearing.
+  bool get cancelled => _cancelled;
+  bool _cancelled = false;
+
+  /// Stop after the current chunk.
+  ///
+  /// It unwinds at a chunk boundary and not inside one, because the local
+  /// backend cannot abort a decode: `llm_llamacpp` exposes no cancel, and
+  /// breaking out of its token stream only stops Dart collecting tokens while
+  /// llama.cpp keeps decoding into a request nobody is reading -- the button
+  /// would look responsive while the phone stayed pinned. So [release] does
+  /// the actual stopping, and it runs from the `finally` in [summarize] as the
+  /// [BriefCancelled] propagates.
+  ///
+  /// The cost is one chunk's decode, which is seconds rather than the minutes
+  /// a full brief takes. The model is reloaded if the teacher starts again,
+  /// which [summarizeSession] already pays on every attempt.
+  @override
+  void cancel() => _cancelled = true;
+
+  /// Between-chunk gate. Cheap enough to sit in front of every step.
+  void _checkCancelled() {
+    if (_cancelled) {
+      throw const BriefCancelled();
+    }
+  }
+
   Future<String> complete(List<ChatTurn> turns, {bool longOutput = false});
 
   @override
@@ -99,16 +134,21 @@ abstract class BriefPipeline implements Summarizer {
       final briefs = <NewsletterSummary>[];
       var step = 0;
       for (var i = 0; i < parts.length; i++) {
+        // Checked before the step as well as after, so a cancel that lands
+        // between chunks costs nothing more than the chunk already in flight.
+        _checkCancelled();
         var text = parts[i];
         if (useKeyLines) {
           step++;
           onProgress?.call(step, total);
+          _checkCancelled();
           text = await _extractKeyLines(text, part: i + 1, of: parts.length);
         }
         step++;
         onProgress?.call(step, total);
         briefs.add(await _mapPart(text, part: i + 1, of: parts.length));
       }
+      _checkCancelled();
       onProgress?.call(total, total);
       if (briefs.length == 1) {
         return briefs.single;
@@ -157,15 +197,17 @@ abstract class BriefPipeline implements Summarizer {
     required int of,
   }) async {
     var draft = NewsletterSummary.parseModelOutput('', headings: _headings);
+    // Computed once: `keyLineHints` re-splits the whole chunk and regex-tests
+    // every word, and it was being asked for twice on the same text.
+    final hints = useKeyLineHints ? keyLineHints(transcript) : null;
     final turns = briefMapTurns(
       specs,
       transcript,
       useFewShot: useFewShot,
-      keyLineHints: useKeyLineHints ? keyLineHints(transcript) : null,
+      keyLineHints: hints,
       part: part,
       of: of,
     );
-    final hints = useKeyLineHints ? keyLineHints(transcript) : null;
 
     var raw = await complete(turns);
     onMapRaw?.call('map $part/$of', raw);
@@ -279,6 +321,7 @@ abstract class BriefPipeline implements Summarizer {
   }
 
   Future<NewsletterSummary> _reduce(List<NewsletterSummary> parts) async {
+    _checkCancelled();
     if (parts.length == 1) {
       return parts.single;
     }
