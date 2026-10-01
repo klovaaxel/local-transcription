@@ -1,0 +1,175 @@
+# Verification only. Runs the real packaging scripts on the real GitHub-hosted
+# runners, on a branch chosen at dispatch time, and reports what came out.
+#
+# This exists because both fixes were written against a guess about the build
+# machine, and the guess was wrong. The runtime lookup in particular depends on
+# where Visual Studio happens to be installed on windows-latest, which cannot be
+# checked from a laptop.
+#
+# It builds and inspects artifacts. It does NOT publish a release, does not
+# touch a tag, and has read-only repository permissions.
+#
+# Dispatch:
+#   gh workflow run verify-packaging.yml -f ref=fix/windows-msvc-runtime
+#   gh workflow run verify-packaging.yml -f ref=fix/android-split-apks
+
+name: Verify packaging
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch to verify'
+        required: true
+        default: 'main'
+      target:
+        description: 'Which packaging fix to exercise'
+        required: true
+        type: choice
+        options:
+          - windows
+          - android
+
+# Read-only on purpose: this workflow must not be able to publish anything.
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    if: inputs.target == 'windows'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      # This is the step that matters. It runs the committed build script on the
+      # real runner, so the runtime lookup sees the real Visual Studio install
+      # rather than a simulated one. It throws if the runtime is not bundled.
+      - name: Build installer and portable zip
+        shell: pwsh
+        run: pwsh -File tool/package/build_windows.ps1
+
+      # Independent of the script's own check: look inside the zip again and
+      # print what is actually there, so the log shows the evidence.
+      - name: Inspect the shipped zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Get-ChildItem dist -Filter '*-windows-x64.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'no zip produced' }
+          Write-Host "=== $($zip.Name) ==="
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($zip.FullName)
+          try { $entries = $archive.Entries.FullName } finally { $archive.Dispose() }
+          $entries | Sort-Object | ForEach-Object { Write-Host "  $_" }
+          $need = @('msvcp140.dll', 'vcruntime140.dll')
+          $absent = $need | Where-Object { $entries -notcontains $_ }
+          if ($absent) {
+            Write-Host "RESULT: FAIL - missing $($absent -join ', ')"
+            exit 1
+          }
+          Write-Host 'RESULT: PASS - MSVC runtime is inside the zip'
+
+      - name: Report what the build found
+        shell: pwsh
+        run: |
+          $vswhere = @(
+            "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
+            "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          Write-Host "vswhere: $vswhere"
+          if ($vswhere) {
+            & $vswhere -all -products '*' -property installationPath |
+              ForEach-Object { Write-Host "VS install: $_" }
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verify-windows-${{ inputs.ref }}
+          path: dist/
+          if-no-files-found: warn
+
+  android:
+    if: inputs.target == 'android'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - run: flutter pub get
+
+      # Debug-signed on purpose. This checks filename handling in the publish
+      # script, not signing, and the beta keystore is a secret this workflow
+      # deliberately does not need. build.gradle.kts falls back to the debug
+      # key when key.properties is absent, which is exactly the path taken here.
+      - name: Build per-ABI APKs
+        run: flutter build apk --release --split-per-abi
+      - name: Build universal APK
+        run: flutter build apk --release
+
+      - name: Collect artifacts
+        run: |
+          VERSION=$(grep -oP '^version:\s*\K.+' pubspec.yaml | cut -d+ -f1)
+          mkdir -p dist
+          for apk in build/app/outputs/flutter-apk/app-*.apk; do
+            base=$(basename "$apk" .apk)
+            case "$base" in
+              app-release)
+                cp "$apk" "dist/Forelasning-$VERSION-android-universal.apk" ;;
+              *)
+                abi=${base#app-}; abi=${abi%-release}
+                cp "$apk" "dist/Forelasning-$VERSION-android-$abi.apk" ;;
+            esac
+          done
+          ls -la dist/
+
+      # The actual fix under test. On main this lists only the universal APK.
+      - name: Run the publish script
+        shell: pwsh
+        run: pwsh -File tool/package/publish_update.ps1 -Repo klovaaxel/local-transcription -WhatIf
+
+      - name: Assert the per-ABI splits are attached
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+          $version = ($version -split '\+')[0]
+          $dist = Join-Path $PWD 'dist'
+          $android = "Forelasning-$version-android-*.apk"
+          $all = @(Get-ChildItem $dist -Filter $android -File |
+            Where-Object { $_.Name -notlike '*-universal.apk' })
+          $all | ForEach-Object { Write-Host "  split: $($_.Name)" }
+          $expect = @('arm64-v8a', 'armeabi-v7a', 'x86_64')
+          $found = $all.Name | ForEach-Object {
+            if ($_ -match '-android-(.+)\.apk$') { $Matches[1] }
+          }
+          $missing = $expect | Where-Object { $found -notcontains $_ }
+          if ($missing) {
+            Write-Host "RESULT: FAIL - splits not attached: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host 'RESULT: PASS - all three per-ABI APKs are attached'
