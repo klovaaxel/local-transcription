@@ -20,7 +20,8 @@ Du behöver godkänna mikrofonen första gången du trycker på spela in.
 
 ## Windows
 
-1. Kör `Forelasning-1.0.0-windows-x64-setup.exe`.
+1. Kör `Forelasning-1.0.0-windows-x64-setup.exe`. Den innehåller allt som
+   behövs — du behöver inte installera något annat först.
 2. Windows säger troligen **"Windows SmartScreen förhindrade att en okänd app
    startades"**. Det är väntat — installationsfilen är inte köpsignerad ännu.
    Klicka **Mer information** → **Kör ändå**.

@@ -4,6 +4,11 @@ Notable changes. Versions follow `pubspec.yaml`; releases are tagged
 `v<version>` and built by the publish workflow. Changes not shipped in a
 release live under Unreleased.
 
+## Unreleased
+
+- Windows builds bundle the Visual C++ runtime again. 1.0.1 shipped without
+  it, so the app stopped at launch with a missing `VCRUNTIME140.dll` (#3).
+
 ## 1.0.1 (2026-09)
 
 - Self-updater: release feed, settings card, and per-platform installers.
