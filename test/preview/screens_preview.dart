@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lecture_local/app_state.dart';
 import 'package:lecture_local/data/lecture_session.dart';
+import 'package:lecture_local/data/session_entry.dart';
 import 'package:lecture_local/data/session_store.dart';
 import 'package:lecture_local/features/home/home_page.dart';
 import 'package:lecture_local/features/record/record_page.dart';
@@ -32,12 +33,21 @@ class MemoryStore extends SessionStore {
   MemoryStore(this.items);
   List<LectureSession> items;
   @override
-  Future<List<LectureSession>> list() async => List.of(items);
+  Future<List<SessionEntry>> list() async => [
+    for (final session in items) SessionEntry.fromSession(session),
+  ];
   @override
-  Future<void> upsert(LectureSession session) async {}
+  Future<LectureSession> load(String id) async =>
+      items.firstWhere((session) => session.id == id);
+  @override
+  Future<void> save(LectureSession session) async {}
   @override
   Future<void> delete(String id) async {}
 }
+
+/// The manifest row the home screen draws. [state] holds rows, not lectures:
+/// the transcript and the brief are read per screen, from the session's file.
+SessionEntry _entry(LectureSession session) => SessionEntry.fromSession(session);
 
 LectureSession _ready() => LectureSession(
   id: 's1',
@@ -141,7 +151,7 @@ void main() {
 
   testWidgets('home light', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready(), _fresh()];
+    state.sessions = [_entry(_ready()), _entry(_fresh())];
     await _shoot(
       tester,
       'home-light',
@@ -153,7 +163,7 @@ void main() {
 
   testWidgets('home dark', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready(), _fresh()];
+    state.sessions = [_entry(_ready()), _entry(_fresh())];
     await _shoot(
       tester,
       'home-dark',
@@ -177,7 +187,7 @@ void main() {
   testWidgets('session light', (tester) async {
     final session = _ready();
     final state = LectureAppState(store: MemoryStore([session]));
-    state.sessions = [session];
+    state.sessions = [_entry(session)];
     await _shoot(
       tester,
       'session-light',
@@ -190,7 +200,7 @@ void main() {
   testWidgets('session dark', (tester) async {
     final session = _ready();
     final state = LectureAppState(store: MemoryStore([session]));
-    state.sessions = [session];
+    state.sessions = [_entry(session)];
     await _shoot(
       tester,
       'session-dark',
@@ -203,7 +213,7 @@ void main() {
   testWidgets('session wide', (tester) async {
     final session = _ready();
     final state = LectureAppState(store: MemoryStore([session]));
-    state.sessions = [session];
+    state.sessions = [_entry(session)];
     await _shoot(
       tester,
       'session-wide',
@@ -248,7 +258,7 @@ void main() {
 
   testWidgets('toast working', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready()];
+    state.sessions = [_entry(_ready())];
     state.busy = true;
     state.statusMessage = 'Skriver underlag…';
     await _shoot(
@@ -263,7 +273,7 @@ void main() {
 
   testWidgets('toast download', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready()];
+    state.sessions = [_entry(_ready())];
     state.busy = true;
     state.statusMessage = 'Laddar ner talmodell…';
     state.downloadProgress = const DownloadProgress(
@@ -283,7 +293,7 @@ void main() {
 
   testWidgets('toast notice', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready()];
+    state.sessions = [_entry(_ready())];
     state.statusMessage = 'Inspelning sparad.';
     await _shoot(
       tester,
@@ -297,7 +307,7 @@ void main() {
 
   testWidgets('toast notice dark', (tester) async {
     final state = LectureAppState(store: MemoryStore([]));
-    state.sessions = [_ready()];
+    state.sessions = [_entry(_ready())];
     state.statusMessage = 'Inspelning sparad.';
     await _shoot(
       tester,

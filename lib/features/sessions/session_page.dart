@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -23,12 +25,31 @@ class SessionPage extends StatefulWidget {
 
 class _SessionPageState extends State<SessionPage> {
   var _askedForBrief = false;
+  LectureSession? _session;
 
-  LectureSession? _find(LectureAppState state) {
+  /// The transcript and the brief live in the session's own file, not in the
+  /// manifest the home screen reads, so opening a lecture costs one file read.
+  /// Until it lands the page has nothing to show and, importantly, nothing that
+  /// looks like a lecture ready for a brief -- asking for one against an
+  /// unloaded session would start work on an empty transcript and never fire
+  /// again, because the guard sets `_askedForBrief` either way.
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final state = context.read<LectureAppState>();
+    // A failed load leaves `_session` null, which is what the page below
+    // already reports for a lecture it cannot find.
     try {
-      return state.sessions.firstWhere((s) => s.id == widget.sessionId);
-    } catch (_) {
-      return null;
+      _session = await state.loadSession(widget.sessionId);
+    } on Object {
+      _session = null;
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -74,7 +95,7 @@ class _SessionPageState extends State<SessionPage> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<LectureAppState>();
-    final session = _find(state);
+    final session = _session;
     if (session == null) {
       return SoftPage(
         title: 'Föreläsning',
@@ -110,6 +131,9 @@ class _SessionPageState extends State<SessionPage> {
     final brief = _BriefPane(
       session: session,
       actions: _briefActions(state, session),
+      briefPhase: state.briefPhase,
+      briefDone: state.briefDone,
+      briefTotal: state.briefTotal,
       footer: _deleteControl(state, session),
     );
     final transcript = _TranscriptPane(session: session);
@@ -163,6 +187,16 @@ class _SessionPageState extends State<SessionPage> {
   /// row — because they are the same job with two destinations. Before there
   /// is a brief, the same slot holds the one action that makes one.
   Widget _briefActions(LectureAppState state, LectureSession session) {
+    // While a brief runs, stopping it is the only action worth offering: the
+    // card is a placeholder, so there is nothing to copy yet, and the wait can
+    // be minutes on a phone. A screen whose whole job is one action says one.
+    if (state.briefRunning) {
+      return SoftButton.quiet(
+        label: 'Avbryt underlag',
+        icon: SoftIcons.cancel,
+        onPressed: state.cancelBrief,
+      );
+    }
     if (session.summary == null) {
       return SoftButton.primary(
         label: state.busy ? 'Skriver underlag…' : 'Skriv underlag',
@@ -251,18 +285,55 @@ class _SessionPageState extends State<SessionPage> {
 }
 
 class _BriefPane extends StatelessWidget {
-  const _BriefPane({required this.session, required this.actions, this.footer});
+  const _BriefPane({
+    required this.session,
+    required this.actions,
+    required this.briefPhase,
+    required this.briefDone,
+    required this.briefTotal,
+    this.footer,
+  });
 
   final LectureSession session;
   final Widget actions;
   final Widget? footer;
+
+  /// What the brief is doing, if one is running. Non-null replaces the
+  /// placeholder text with something that actually moves.
+  final String? briefPhase;
+  final int briefDone;
+  final int briefTotal;
+
+  /// Says which of the slow phases this is, in the teacher's terms. The wait
+  /// is mostly a multi-gigabyte download the first time and a decode the
+  /// others, and "Skriver underlag…" covers both equally badly.
+  String get _phaseLine {
+    switch (briefPhase) {
+      case 'startar':
+        return 'Startar…';
+      case 'hämtar modell':
+        return 'Hämtar modellen. Det kan ta en stund första gången.';
+      case 'mäter hastighet':
+        return 'Mäter modellens hastighet…';
+      case 'laddar modell':
+        return 'Laddar modellen…';
+      default:
+        // The decode. A one-chunk brief reports 1/1, which is not progress,
+        // so fall back to the plain line rather than a frozen counter.
+        return briefTotal > 1
+            ? 'Skriver underlag ($briefDone av $briefTotal)…'
+            : 'Skriver underlag…';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final p = SoftPalette.of(context);
     final summary = session.summary;
-    const pending = 'Underlaget skrivs när transkriptionen är klar.';
+    final pending = briefPhase != null
+        ? _phaseLine
+        : 'Underlaget skrivs när transkriptionen är klar.';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -272,6 +343,20 @@ class _BriefPane extends StatelessWidget {
             child: Text(
               session.error!,
               style: theme.textTheme.bodyMedium?.copyWith(color: p.danger),
+            ),
+          ),
+          const SizedBox(height: SoftSpace.md),
+        ],
+        if (session.status == SessionStatus.interrupted) ...[
+          SoftCard(
+            child: Text(
+              // Not an error: the audio and whatever was said before the app
+              // died are still here. What never finished is the work behind it,
+              // and which work is decided by what survived.
+              session.audioPath == null && session.displayTranscript.isEmpty
+                  ? 'Inspelningen avbröts och inget ljud sparades.'
+                  : 'Inspelningen avbröts. Det som sagdes finns kvar nedan.',
+              style: theme.textTheme.bodyMedium,
             ),
           ),
           const SizedBox(height: SoftSpace.md),
