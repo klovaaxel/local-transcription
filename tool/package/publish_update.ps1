@@ -50,7 +50,16 @@ $patterns = [ordered]@{
   'android' = "Forelasning-$appVersion-android-universal.apk"
   'linux'   = "forelasning_${appVersion}-*_amd64.deb"
   'zip'     = "Forelasning-$appVersion-windows-x64.zip"
-  'splits'  = "Forelasning-$appVersion-android-*[0-9a]).apk"
+  'splits'  = "Forelasning-$appVersion-android-*.apk"
+}
+
+# Get-ChildItem -Filter takes a wildcard, not a pattern, so the split APKs are
+# picked up by the broad android-* filter and narrowed here. Do it this way
+# rather than with a character class: [0-9a] is not honoured on every platform
+# PowerShell runs on, and the universal APK is already claimed under 'android'
+# so it must not be attached twice.
+$excludes = @{
+  'splits' = @('*-universal.apk')
 }
 
 $manifestArtifacts = [ordered]@{}
@@ -64,9 +73,26 @@ foreach ($key in $patterns.Keys) {
       $files = @(Get-Item (Join-Path $dist $pattern))
     }
   }
+  # Exclude AFTER the literal-path fallback above, not before it. Test-Path and
+  # Get-Item treat the * in a pattern as a wildcard, so that fallback finds the
+  # universal APK again and hands back exactly what the filter had just
+  # narrowed away - which would attach it twice and hide the missing splits.
+  if ($excludes.ContainsKey($key)) {
+    foreach ($exclude in $excludes[$key]) {
+      $files = @($files | Where-Object { $_.Name -notlike $exclude })
+    }
+  }
   if (-not $files) {
     if ($key -in @('windows', 'android', 'linux')) {
       Write-Warning "No $key artifact in dist\ matching $pattern - manifest will lack $key."
+    }
+    if ($key -eq 'splits') {
+      # Every release so far has shipped the universal APK only, because this
+      # lookup never matched. It works, but it is 201 MB where the per-ABI
+      # file is 39-107 MB, and docs/INSTALL.md tells emulator and old-phone
+      # testers to install a file that was never attached (#1). A release
+      # without them is a release that wastes a tester's download.
+      throw "No per-ABI split APKs in dist\ matching $pattern after excluding $($excludes['splits'] -join ', '). Build them with: flutter build apk --release --split-per-abi"
     }
     continue
   }
