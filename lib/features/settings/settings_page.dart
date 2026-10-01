@@ -120,7 +120,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Välj talmodell automatiskt'),
                     subtitle: const Text(
-                      'På datorn kb-whisper medium (bättre svenska), '
+                      'På datorn kb-whisper large (bäst svenska), '
                       'på telefon small — efter vad enheten orkar.',
                     ),
                     value: settings.autoAsr,
@@ -153,6 +153,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           _Choice(
                             label: ModelCatalog.medium.label,
                             value: AsrModelSize.medium,
+                          ),
+                          _Choice(
+                            label: ModelCatalog.large.label,
+                            value: AsrModelSize.large,
                           ),
                         ],
                       ),
@@ -188,8 +192,8 @@ class _SettingsPageState extends State<SettingsPage> {
           SoftSection(
             label: 'Sammanfattning',
             subtitle:
-                'Modellen väljs automatiskt efter enheten. 3B på telefon, '
-                '7B på dator.',
+                'Modellen väljs automatiskt efter enheten. 4B på telefon, '
+                '4B med större fönster på dator.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -223,7 +227,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Välj modell automatiskt'),
                     subtitle: const Text(
-                      'På datorn 7B, på telefon 3B — efter vad enheten klarar.',
+                      'På datorn ett större fönster, på telefon ett mindre — efter vad '
+                      'enheten klarar.',
                     ),
                     value: settings.autoLlm,
                     onChanged: state.busy
