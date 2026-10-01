@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
@@ -7,6 +8,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sox;
 import 'live_caption_buffer.dart';
 import 'model_downloader.dart';
 import 'pcm_level.dart';
+import 'wav_windows.dart';
 
 class CaptionEvent {
   const CaptionEvent(this.text, {this.authoritative = false});
@@ -139,8 +141,9 @@ void _asrIsolateMain(SendPort ready) {
   sox.CircularBuffer? ring;
   SendPort? client;
   final captions = LiveCaptionBuffer();
-  var rolling = Float32List(0);
+  final rolling = RollingBuffer();
   var samplesSinceWindow = 0;
+  var disposing = false;
 
   String decodeSamples(Float32List samples, int sampleRate) {
     if (samples.isEmpty || recognizer == null) {
@@ -174,23 +177,33 @@ void _asrIsolateMain(SendPort ready) {
     if (samples.isEmpty) {
       return;
     }
-    if (samples.length <= _windowSamples) {
+    if (samples.length <= windowSamples) {
       emitCaption(decodeSamples(samples, sampleRate), authoritative: true);
       return;
     }
-    var offset = 0;
-    while (offset < samples.length) {
-      final end = (offset + _windowSamples).clamp(0, samples.length);
+    for (final offset in windowOffsets(samples.length)) {
+      final end = (offset + windowSamples).clamp(0, samples.length);
       final slice = samples.sublist(offset, end);
       emitCaption(
         decodeSamples(Float32List.fromList(slice), sampleRate),
         authoritative: true,
       );
-      if (end >= samples.length) {
-        break;
-      }
-      offset += _hopSamples;
     }
+  }
+
+  /// The recording on disk, one window at a time, so peak memory is a window
+  /// rather than the lecture and a header that never got patched no longer
+  /// reads as silence. `false` from [readWavWindows] means `stop()` landed
+  /// between two windows: the recognizer is freed while this walk is still
+  /// holding it, which is a crash, so bail out instead of decoding.
+  Future<void> transcribeFileWindows(File file) async {
+    await readWavWindows(file, (samples, sampleRate) {
+      if (disposing) {
+        return false;
+      }
+      emitCaption(decodeSamples(samples, sampleRate), authoritative: true);
+      return true;
+    });
   }
 
   void consumeVad() {
@@ -233,7 +246,9 @@ void _asrIsolateMain(SendPort ready) {
     }
   }
 
-  inbox.listen((message) {
+  // Async so the file walk can yield between windows; every other command runs
+  // straight through, it has nothing to await.
+  inbox.listen((message) async {
     if (message is! Map) {
       return;
     }
@@ -306,28 +321,4 @@ void _asrIsolateMain(SendPort ready) {
       client?.send({'type': 'error', 'message': e.toString()});
     }
   });
-}
-
-Float32List _pcm16ToFloat(Uint8List bytes) {
-  final n = bytes.length ~/ 2;
-  final out = Float32List(n);
-  final data = ByteData.sublistView(bytes);
-  for (var i = 0; i < n; i++) {
-    out[i] = data.getInt16(i * 2, Endian.little) / 32768.0;
-  }
-  return out;
-}
-
-Float32List _concat(Float32List a, Float32List b) {
-  if (a.isEmpty) {
-    return b;
-  }
-  final out = Float32List(a.length + b.length);
-  out.setAll(0, a);
-  out.setAll(a.length, b);
-  const keep = _windowSamples + _hopSamples;
-  if (out.length <= keep) {
-    return out;
-  }
-  return Float32List.fromList(out.sublist(out.length - keep));
 }
