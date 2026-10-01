@@ -460,7 +460,7 @@ class LectureAppState extends ChangeNotifier {
         status: SessionStatus.recording,
       );
       active = session;
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
 
       await _captionSub?.cancel();
@@ -471,9 +471,7 @@ class LectureAppState extends ChangeNotifier {
             if (current == null) {
               return;
             }
-            current.liveCaptions = event.text;
-            notifyListeners();
-            unawaited(store.upsert(current));
+            _onCaption(event);
           },
           onError: (Object e) {
             statusMessage = e.toString();
@@ -528,11 +526,19 @@ class LectureAppState extends ChangeNotifier {
       }
       session.endedAt = DateTime.now();
       session.status = SessionStatus.transcribing;
-      await store.upsert(session);
+      await store.save(session);
       notifyListeners();
 
       try {
-        final live = settings.liveCaptionsEnabled ? await asr.flushLive() : '';
+        final flushed = settings.liveCaptionsEnabled ? await asr.flushLive() : '';
+        // The engine's flush is the live text as this run of the app heard it,
+        // and it wins. A lecture that did not get this far -- the app was
+        // killed mid-recording, the flush failed, the engine never started --
+        // has nothing in memory but has everything in the caption log, which is
+        // the one copy written outside the process that can die.
+        final live = flushed.trim().isEmpty
+            ? await store.readCaptions(session.id)
+            : flushed;
         session.liveCaptions = live;
         var text = live;
         if (session.audioPath != null) {
@@ -558,7 +564,7 @@ class LectureAppState extends ChangeNotifier {
         }
       }
 
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
       finished = session;
       active = null;
@@ -576,7 +582,7 @@ class LectureAppState extends ChangeNotifier {
         throw StateError('Ingen ljudfil att transkribera.');
       }
       session.status = SessionStatus.transcribing;
-      await store.upsert(session);
+      await store.save(session);
       notifyListeners();
       try {
         final started = Stopwatch()..start();
@@ -593,7 +599,7 @@ class LectureAppState extends ChangeNotifier {
         session.status = SessionStatus.ready;
         session.error = e.toString();
       }
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
     });
   }
