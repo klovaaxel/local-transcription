@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lecture_local/app_state.dart';
 import 'package:lecture_local/data/lecture_session.dart';
+import 'package:lecture_local/data/session_entry.dart';
 import 'package:lecture_local/data/session_store.dart';
 import 'package:lecture_local/features/sessions/session_page.dart';
 import 'package:lecture_local/features/settings/settings_page.dart';
@@ -18,10 +19,16 @@ class MemorySessionStore extends SessionStore {
   List<LectureSession> items;
 
   @override
-  Future<List<LectureSession>> list() async => List.of(items);
+  Future<List<SessionEntry>> list() async => [
+    for (final session in items) SessionEntry.fromSession(session),
+  ];
 
   @override
-  Future<void> upsert(LectureSession session) async {
+  Future<LectureSession> load(String id) async =>
+      items.firstWhere((session) => session.id == id);
+
+  @override
+  Future<void> save(LectureSession session) async {
     final i = items.indexWhere((s) => s.id == session.id);
     if (i >= 0) {
       items[i] = session;
@@ -70,7 +77,7 @@ void main() {
   testWidgets('session leading slot is back, not delete', (tester) async {
     final session = _readySession();
     final state = LectureAppState(store: MemorySessionStore([session]));
-    state.sessions = [session];
+    state.sessions = [SessionEntry.fromSession(session)];
 
     await tester.pumpWidget(
       _app(
@@ -112,14 +119,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Välj modell automatiskt'), findsOneWidget);
     // With auto on, the model list is hidden behind the toggle.
-    expect(find.text('Qwen 7B (dator, ~4,7 GB)'), findsNothing);
+    expect(find.text(ModelCatalog.llmLarge.label), findsNothing);
 
     await tester.tap(
       find.widgetWithText(SwitchListTile, 'Välj modell automatiskt'),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Qwen 1.5B (telefon, ~1,1 GB)'), findsOneWidget);
-    expect(find.text('Qwen 7B (dator, ~4,7 GB)'), findsOneWidget);
+    expect(find.text(ModelCatalog.llmSmall.label), findsOneWidget);
+    expect(find.text(ModelCatalog.llmMedium.label), findsOneWidget);
+    expect(find.text(ModelCatalog.llmLarge.label), findsOneWidget);
   });
 
   testWidgets('settings hides the provider card until cloud is picked', (
@@ -170,7 +178,7 @@ void main() {
 
     final session = _readySession();
     final state = LectureAppState(store: MemorySessionStore([session]));
-    state.sessions = [session];
+    state.sessions = [SessionEntry.fromSession(session)];
 
     await tester.pumpWidget(
       _app(

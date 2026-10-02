@@ -16,10 +16,12 @@ import 'asr/wav_sink.dart';
 import 'cloud/openai_compatible.dart';
 import 'data/app_settings.dart';
 import 'data/lecture_session.dart';
+import 'data/session_entry.dart';
 import 'data/session_store.dart';
 import 'models/model_catalog.dart';
 import 'perf/device_bench.dart';
 import 'perf/llm_speed_probe.dart';
+import 'summarize/brief_pipeline.dart' show BriefCancelled;
 import 'summarize/cloud_summarizer.dart';
 import 'summarize/local_summarizer.dart';
 import 'summarize/summarizer.dart';
@@ -42,9 +44,110 @@ class LectureAppState extends ChangeNotifier {
   final _uuid = const Uuid();
 
   AppSettings settings = AppSettings();
-  List<LectureSession> sessions = [];
+
+  /// The lecture list, manifest only. Everything the cards render is derived
+  /// at write time, so the home screen costs one small file however long the
+  /// lectures in it are. The lecture itself is read per screen, from its own
+  /// file.
+  List<SessionEntry> sessions = [];
   LectureSession? active;
   String? statusMessage;
+
+  /// The full lecture behind a manifest row, read on demand. Throws if the id
+  /// is unknown -- a row without a file means a half-finished write, and the
+  /// session screen reports that rather than showing an empty lecture.
+  Future<LectureSession> loadSession(String id) => store.load(id);
+
+  /// A caption event, for tests that need to drive the caption stream without
+  /// a Whisper model. [_onCaption] is the whole of the behaviour.
+  @visibleForTesting
+  Future<void> onCaptionForTest(CaptionEvent event) async {
+    _onCaption(event);
+    // The append is deliberately not awaited, so let it land before counting.
+    await Future<void>.delayed(Duration.zero);
+  }
+
+  /// A lecture left mid-flight by a killed process. Its status on disk is a
+  /// promise nothing is going to keep, so the card would say "Spelar in" for
+  /// good. Reconcile each one: say it was interrupted, fold in whatever the
+  /// caption log caught, and drop an audio path that is not there -- offering
+  /// "Transkribera om" for a file that does not exist is the one way this
+  /// makes things worse than leaving it alone.
+  ///
+  /// Runs once at launch, before anything reads [sessions] for display. Every
+  /// write is a [SessionStore.save], so a lecture reconciled twice is the same
+  /// lecture twice rather than a second row.
+  /// The launch path as it reaches the reconciliation: read the manifest, then
+  /// settle whatever it found. [init] does this as its first two statements --
+  /// separating them is only so a test does not need settings and package info.
+  @visibleForTesting
+  Future<void> reconcileForTest() async {
+    sessions = await store.list();
+    await _reconcileInterrupted();
+  }
+
+  Future<void> _reconcileInterrupted() async {
+    final stranded = sessions.where((e) => _inProgress.contains(e.status)).toList();
+    if (stranded.isEmpty) {
+      return;
+    }
+    for (final entry in stranded) {
+      try {
+        final session = await _loadOrRebuild(entry);
+        session.status = SessionStatus.interrupted;
+
+        // A kill cuts the recording off at an unknown point, so there is no
+        // honest value to invent for `endedAt` -- leave whatever was written.
+        if (session.displayTranscript.trim().isEmpty) {
+          // The log is the one copy written outside the process that died.
+          final recovered = await store.readCaptions(session.id);
+          if (recovered.trim().isNotEmpty) {
+            session.liveCaptions = recovered;
+          }
+        }
+
+        final audio = session.audioPath;
+        if (audio != null && !await File(audio).exists()) {
+          session.audioPath = null;
+        }
+
+        await store.save(session);
+      } on Object {
+        // A lecture that cannot be read back is left exactly as it was. The
+        // store writes the session before the manifest row, so this should not
+        // happen, and a row that is unreachable is a smaller problem than one
+        // that was rewritten into a state nobody asked for.
+      }
+    }
+    sessions = await store.list();
+  }
+
+  /// Statuses that mean work is genuinely in flight. `active` is null at
+  /// launch, so anything still claiming one of these was left behind.
+  static const _inProgress = {
+    SessionStatus.recording,
+    SessionStatus.transcribing,
+    SessionStatus.summarizing,
+  };
+
+  /// The lecture behind a row, or a stand-in built from the row itself when
+  /// the session file is missing. A row with no file should not exist -- the
+  /// store writes the file first -- but a store written by an older build, or
+  /// one whose file was deleted under it, can leave one, and a row in a
+  /// progress status with no file behind it is exactly the case this method
+  /// exists to stop lying about.
+  Future<LectureSession> _loadOrRebuild(SessionEntry entry) async {
+    try {
+      return await store.load(entry.id);
+    } on StateError {
+      return LectureSession(
+        id: entry.id,
+        startedAt: entry.startedAt,
+        endedAt: entry.endedAt,
+        audioPath: entry.audioPath,
+      );
+    }
+  }
 
   /// True when [statusMessage] is a failure. The toast keeps those up until
   /// they are dismissed; confirmations clear themselves.
@@ -110,6 +213,7 @@ class LectureAppState extends ChangeNotifier {
   Future<void> init() async {
     settings = await AppSettings.load();
     sessions = await store.list();
+    await _reconcileInterrupted();
     await refreshModelFlags();
     final info = await PackageInfo.fromPlatform();
     _appVersion = info.version;
@@ -190,6 +294,29 @@ class LectureAppState extends ChangeNotifier {
     statusIsHold = false;
     notifyListeners();
   }
+
+  /// What a brief is doing while it runs, and how far along it is. Null when no
+  /// brief is in flight.
+  ///
+  /// A brief is minutes of local compute behind a single unchanging
+  /// placeholder, so without this the teacher cannot tell a forty-second job
+  /// from a ten-minute one. The phases are the honest part: on a first run the
+  /// wait is mostly a multi-gigabyte download, and a decode counter would say
+  /// "0/1" through all of it.
+  String? briefPhase;
+  int briefDone = 0;
+  int briefTotal = 0;
+
+  Summarizer? _runningBrief;
+
+  /// True while a brief can still be stopped. The session screen puts its
+  /// Avbryt next to this.
+  bool get briefRunning => _runningBrief != null;
+
+  /// Stop the brief in flight. Unwinds at the next chunk boundary -- see
+  /// [BriefPipeline.cancel] for why it cannot be instant, and why that is
+  /// still worth having.
+  void cancelBrief() => _runningBrief?.cancel();
 
   Future<void> refreshModelFlags() async {
     asrReady = await downloader.asrReady(settings.effectiveAsrSize);
@@ -357,7 +484,7 @@ class LectureAppState extends ChangeNotifier {
         status: SessionStatus.recording,
       );
       active = session;
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
 
       await _captionSub?.cancel();
@@ -368,9 +495,7 @@ class LectureAppState extends ChangeNotifier {
             if (current == null) {
               return;
             }
-            current.liveCaptions = event.text;
-            notifyListeners();
-            unawaited(store.upsert(current));
+            _onCaption(event);
           },
           onError: (Object e) {
             statusMessage = e.toString();
@@ -425,11 +550,19 @@ class LectureAppState extends ChangeNotifier {
       }
       session.endedAt = DateTime.now();
       session.status = SessionStatus.transcribing;
-      await store.upsert(session);
+      await store.save(session);
       notifyListeners();
 
       try {
-        final live = settings.liveCaptionsEnabled ? await asr.flushLive() : '';
+        final flushed = settings.liveCaptionsEnabled ? await asr.flushLive() : '';
+        // The engine's flush is the live text as this run of the app heard it,
+        // and it wins. A lecture that did not get this far -- the app was
+        // killed mid-recording, the flush failed, the engine never started --
+        // has nothing in memory but has everything in the caption log, which is
+        // the one copy written outside the process that can die.
+        final live = flushed.trim().isEmpty
+            ? await store.readCaptions(session.id)
+            : flushed;
         session.liveCaptions = live;
         var text = live;
         if (session.audioPath != null) {
@@ -455,7 +588,7 @@ class LectureAppState extends ChangeNotifier {
         }
       }
 
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
       finished = session;
       active = null;
@@ -473,7 +606,7 @@ class LectureAppState extends ChangeNotifier {
         throw StateError('Ingen ljudfil att transkribera.');
       }
       session.status = SessionStatus.transcribing;
-      await store.upsert(session);
+      await store.save(session);
       notifyListeners();
       try {
         final started = Stopwatch()..start();
@@ -490,7 +623,7 @@ class LectureAppState extends ChangeNotifier {
         session.status = SessionStatus.ready;
         session.error = e.toString();
       }
-      await store.upsert(session);
+      await store.save(session);
       sessions = await store.list();
     });
   }
@@ -502,14 +635,23 @@ class LectureAppState extends ChangeNotifier {
         throw StateError('Ingen transkription att sammanfatta.');
       }
       session.status = SessionStatus.summarizing;
-      await store.upsert(session);
-      notifyListeners();
+      await store.save(session);
+      void phase(String what) {
+        briefPhase = what;
+        briefDone = 0;
+        briefTotal = 0;
+        notifyListeners();
+      }
 
+      phase('startar');
       void briefProgress(int done, int total) {
-        if (total <= 1) {
-          return;
-        }
-        statusMessage = 'Skriver underlag ($done/$total)…';
+        briefDone = done;
+        briefTotal = total;
+        // A one-chunk brief reports 1/1 and never moves, which is not progress
+        // -- it is a countdown that finished. Say which part is being written.
+        statusMessage = total <= 1
+            ? 'Skriver underlag…'
+            : 'Skriver underlag ($done/$total)…';
         notifyListeners();
       }
 
@@ -522,6 +664,7 @@ class LectureAppState extends ChangeNotifier {
         );
       } else {
         final size = settings.effectiveLlmSize;
+        phase('hämtar modell');
         final modelPath = await downloader.ensureLlm(
           size: size,
           onProgress: _onDownload,
@@ -531,7 +674,9 @@ class LectureAppState extends ChangeNotifier {
         // the NEXT brief+download, but this run keeps the spec that matches
         // the file already on the device.
         final spec = ModelCatalog.llm(size);
+        phase('mäter hastighet');
         await _speedProbeLlm(size, modelPath);
+        phase('laddar modell');
         summarizer = LocalLlmSummarizer(
           modelPath: modelPath,
           spec: spec,
@@ -543,7 +688,11 @@ class LectureAppState extends ChangeNotifier {
         );
       }
 
+      // Set before the first decode so a cancel that arrives during the
+      // question-building phase is not lost.
+      _runningBrief = summarizer;
       try {
+        phase('skriver underlag');
         final started = Stopwatch()..start();
         session.summary = await summarizer.summarize(transcript);
         started.stop();
@@ -551,12 +700,20 @@ class LectureAppState extends ChangeNotifier {
           await _calibrateLlm(transcript.length, started.elapsedMilliseconds);
         }
         session.error = null;
+      } on BriefCancelled {
+        // Not an error: the teacher asked for this. Leave whatever the run had
+        // finished -- an earlier draft is still better than none -- and say so
+        // through the toast rather than the failure channel.
+        statusMessage = null;
+        session.error = null;
       } catch (e) {
         session.error = e.toString();
         rethrow;
       } finally {
+        _runningBrief = null;
+        briefPhase = null;
         session.status = SessionStatus.ready;
-        await store.upsert(session);
+        await store.save(session);
         sessions = await store.list();
       }
     });
@@ -805,6 +962,23 @@ class LectureAppState extends ChangeNotifier {
       return current.startsWith(original.substring(0, original.length - 1));
     }
     return false;
+  }
+
+  /// A caption arrived. Split out from the subscription so it can be driven
+  /// directly: which store call this makes is the thing worth a test, and it is
+  /// the one write that used to cost what the whole lecture cost.
+  void _onCaption(CaptionEvent event) {
+    final current = active;
+    if (current == null) {
+      return;
+    }
+    current.liveCaptions = event.text;
+    notifyListeners();
+    // The stream hands over the whole buffer every time and it grows with the
+    // lecture, so this is an append and nothing more: the log diffs the text
+    // itself, and the manifest row is not touched because nothing the card
+    // shows has changed yet.
+    unawaited(store.appendCaptions(current.id, event.text));
   }
 
   void _onPcm(Uint8List chunk) {
