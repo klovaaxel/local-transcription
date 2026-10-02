@@ -20,7 +20,7 @@ Du behöver godkänna mikrofonen första gången du trycker på spela in.
 
 ## Windows
 
-1. Kör `Forelasning-1.0.0-windows-x64-setup.exe`. Den innehåller allt som
+1. Kör `Forelasning-1.0.2-windows-x64-setup.exe`. Den innehåller allt som
    behövs — du behöver inte installera något annat först.
 2. Windows säger troligen **"Windows SmartScreen förhindrade att en okänd app
    startades"**. Det är väntat — installationsfilen är inte köpsignerad ännu.
@@ -28,7 +28,7 @@ Du behöver godkänna mikrofonen första gången du trycker på spela in.
 3. Installationen kräver **inte** administratör. Appen hamnar under din egen
    användare och startas från Startmenyn som *Föreläsning*.
 
-Vill du hellre slippa installera: packa upp `Forelasning-1.0.0-windows-x64.zip`
+Vill du hellre slippa installera: packa upp `Forelasning-1.0.2-windows-x64.zip`
 och kör `lecture_local.exe` direkt ur mappen.
 
 Avinstallera via *Inställningar → Appar → Föreläsning*. Dina inspelningar och
@@ -40,7 +40,7 @@ underlag ligger kvar.
 
 APK:en installeras vid sidan av Play — den ligger inte i butiken.
 
-1. Ta **`Forelasning-1.0.0-android-arm64-v8a.apk`**. Det är rätt fil för i
+1. Ta **`Forelasning-1.0.2-android-arm64-v8a.apk`**. Det är rätt fil för i
    stort sett alla telefoner sålda de senaste åtta åren.
    - Väldigt gammal telefon? Prova `armeabi-v7a`.
    - Emulator på dator, till exempel Waydroid? `x86_64`.
