@@ -2,16 +2,17 @@ import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../asr/asr_engine.dart' show asrThreadsForDevice;
 import '../models/model_catalog.dart';
 import '../perf/device_bench.dart';
 import '../summarize/brief_sections.dart';
 
 /// The speech model for this device, picked when the teacher leaves the
-/// choice to the app. kb-whisper-medium transcribes noticeably better
-/// Swedish but costs ~2.5x the compute of small. Desktop CPUs handle that
-/// fine (it runs after the lecture, with progress shown); phones transcribe
-/// on the CPU and would crawl — small there, unless the desktop has fewer
-/// than four cores.
+/// choice to the app. kb-whisper-large transcribes noticeably better Swedish
+/// than medium but costs roughly 3x medium's compute per second of audio.
+/// Desktop CPUs handle that fine (it runs after the lecture, with progress
+/// shown); phones transcribe on the CPU and would crawl — small there, unless
+/// the desktop has fewer than four cores.
 AsrModelSize autoAsrForDevice() {
   if (Platform.isAndroid || Platform.isIOS) {
     return AsrModelSize.small;
@@ -19,13 +20,16 @@ AsrModelSize autoAsrForDevice() {
   if (Platform.numberOfProcessors < 4) {
     return AsrModelSize.small;
   }
-  return AsrModelSize.medium;
+  return AsrModelSize.large;
 }
 
 /// The brief model for this device, picked when the teacher leaves the
-/// choice to the app. Desktops get the 7B (GPU offload). Phones get the 3B —
-/// big enough that keyword lists and invented dates stop, small enough for a
-/// phone; Metal carries it on iPhone.
+/// choice to the app. Both tiers ship the same 4B weights; the desktop tier
+/// simply gets a wider window, so a 45-minute lecture maps in one chunk and
+/// skips the merge where the prov used to get dropped. Phones get the narrow
+/// window to stay inside their decode budget — big enough that keyword lists
+/// and invented dates stop, small enough for a phone; Metal carries it on
+/// iPhone.
 LlmModelSize autoLlmForDevice() {
   if (Platform.isAndroid || Platform.isIOS) {
     return LlmModelSize.medium;
@@ -59,15 +63,15 @@ class AppSettings {
   AsrModelSize asrSize;
 
   /// When true (the default) the app picks the speech model for this device:
-  /// kb-whisper-medium on desktops with four or more cores, small on phones.
+  /// kb-whisper-large on desktops with four or more cores, small on phones.
   /// [asrSize] is then only the explicit override, used when this is false.
   bool autoAsr;
 
   LlmModelSize llmSize;
 
-  /// When true (the default) the app picks the brief model for this device:
-  /// 7B on desktop, 3B on phones. [llmSize] is then only the explicit
-  /// override, used when this is false.
+  /// When true (the default) the app picks the brief window for this device:
+  /// the wide one on desktop, the narrow one on phones. [llmSize] is then
+  /// only the explicit override, used when this is false.
   bool autoLlm;
 
   /// Measured SHA-256 throughput (MB/s) from the launch benchmark, or null
@@ -94,6 +98,14 @@ class AppSettings {
   LlmModelSize? llmCap;
   AsrModelSize? asrCap;
 
+  /// Whisper decoder threads, or null to let [asrThreadsForDevice] derive it
+  /// from what the platform reports. Held here so a device that turns out to
+  /// transcribe badly can be pinned without a code change, which is the same
+  /// escape hatch [asrCap] is for the model.
+  int? asrThreads;
+
+  int get effectiveAsrThreads => asrThreads ?? asrThreadsForDevice();
+
   /// Generated tokens/second from the decode probe run right after a brief
   /// model downloaded ([LlmSpeedProbe]). Includes whatever GPU the device
   /// has, which the launch benchmark cannot.
@@ -118,8 +130,9 @@ class AppSettings {
   AsrModelSize _autoAsrPick() {
     var pick = autoAsrForDevice();
     // Without a GPU the CPU carries whisper; a measurement below the weak
-    // line means medium would crawl even on a desktop — small it is.
-    if (pick == AsrModelSize.medium &&
+    // line means even medium would crawl on such a desktop — small it is,
+    // at whatever tier the device rule had asked for.
+    if (pick != AsrModelSize.small &&
         cpuScoreMbs != null &&
         cpuScoreMbs! < cpuWeakMbs) {
       pick = AsrModelSize.small;
@@ -221,8 +234,9 @@ class AppSettings {
       BriefSectionCatalog.resolve(briefSectionIds);
 
   /// Same, with the schedule instruction chosen for the model tier that
-  /// will write the brief (7B answers prov-detail questions well enough
-  /// that the extra instruction measurably pays off; the 3B screens it).
+  /// will write the brief (the large tier answers prov-detail questions well
+  /// enough that the extra instruction measurably pays off; the smaller
+  /// tiers screen it).
   List<BriefSectionSpec> briefSpecsFor(LlmModelSize size) =>
       BriefSectionCatalog.resolveFor(size, briefSectionIds);
 
@@ -274,6 +288,7 @@ class AppSettings {
   static const _llmMsKchar = 'llmMsPerKchar';
   static const _llmCap = 'llmCap';
   static const _asrCap = 'asrCap';
+  static const _asrThreads = 'asrThreads';
   static const _llmTok = 'llmTokPerSec';
   static const _llmTokKey = 'llmTokBenchKey';
   static const _gpuBackend = 'gpuBackendName';
@@ -281,9 +296,11 @@ class AppSettings {
 
   /// Below this decode speed the auto brief pick steps down. Anchored in
   /// measured devices ([LlmSpeedProbe]): a known-good desktop measures ~5
-  /// tok/s on the 7B (Vulkan) and finishes a 90-300-token underlag in well
-  /// under a minute. At 4 tok/s that is already two minutes of decode —
-  /// the line where a tier stops being a sensible default.
+  /// tok/s on the large tier (Vulkan, measured on Qwen2.5-7B) and finishes a
+  /// 90-300-token underlag in well under a minute. At 4 tok/s that is already
+  /// two minutes of decode — the line where a tier stops being a sensible
+  /// default. Re-measure on Qwen3.5: it is a hybrid Gated DeltaNet, and its
+  /// decode rate is an assumption, not a fact.
   static const llmSlowTokPerSec = 4.0;
 
   static Future<AppSettings> load() async {
@@ -326,6 +343,7 @@ class AppSettings {
       ..asrCap = AsrModelSize.values
           .where((e) => e.name == p.getString(_asrCap))
           .firstOrNull
+      ..asrThreads = p.getInt(_asrThreads)
       ..llmTokPerSec = p.getDouble(_llmTok)
       ..llmTokBenchKey = p.getString(_llmTokKey)
       ..gpuBackendName = p.getString(_gpuBackend)
@@ -371,6 +389,11 @@ class AppSettings {
     }
     await p.setString(_llmCap, llmCap?.name ?? '');
     await p.setString(_asrCap, asrCap?.name ?? '');
+    if (asrThreads == null) {
+      await p.remove(_asrThreads);
+    } else {
+      await p.setInt(_asrThreads, asrThreads!);
+    }
     final tok = llmTokPerSec;
     if (tok == null) {
       await p.remove(_llmTok);

@@ -121,6 +121,14 @@ void main() {
       final dumpDir = Directory('feedback/quality/dumps')
         ..createSync(recursive: true);
 
+      // LLM_GPU_LAYERS=0 forces CPU inference. Needed when a model cannot get
+      // a Vulkan context on the local card (VRAM OOM), and as an isolation
+      // test when a quant dies natively instead of raising: CPU-only removes
+      // the GPU kernels from the picture.
+      final gpuLayers = int.tryParse(
+        Platform.environment['LLM_GPU_LAYERS'] ?? '',
+      );
+
       final table = StringBuffer()
         ..writeln(
           '| Model | Rad | Run | Föreläsning | Tid | Fakta | Tomma | Översiktsord |',
@@ -146,6 +154,7 @@ void main() {
                 useKeyLineHints: true,
                 seed: run * 97 + 13,
                 temperature: row.temperature,
+                gpuLayers: gpuLayers,
                 onMapRaw: (stage, raw) {
                   final safeStage = stage.replaceAll(RegExp(r'\W+'), '-');
                   final safeLecture = golden.label.replaceAll(
