@@ -51,6 +51,7 @@ class AppSettings {
     String? cloudChatModel,
     String? cloudTranscribeModel,
     this.deleteAudioAfterTranscribe = false,
+    this.liveCaptions = true,
     this.autoUpdate = true,
     List<String>? briefSectionIds,
     this.cpuScoreMbs,
@@ -146,7 +147,13 @@ class AppSettings {
 
   LlmModelSize _autoLlmPick() {
     var pick = autoLlmForDevice();
-    if (pick == LlmModelSize.large &&
+    // The 4B file is ~2.7 GB. Medium and large are that same file, so a
+    // machine under [llmMediumMinRamMb] has to stay on the 2B or the brief
+    // dies in llama_model_load (seen on a Waydroid x86_64 build).
+    final ram = ramTotalMb;
+    if (ram != null && ram < llmMediumMinRamMb) {
+      pick = LlmModelSize.small;
+    } else if (pick == LlmModelSize.large &&
         cpuScoreMbs != null &&
         cpuScoreMbs! < cpuWeakMbs) {
       pick = LlmModelSize.medium;
@@ -157,6 +164,10 @@ class AppSettings {
     }
     return pick;
   }
+
+  /// Installed RAM (or the cgroup cap), set at launch from [DeviceBench].
+  /// Not persisted: it is a fact about this boot, not a preference.
+  int? ramTotalMb;
 
   /// Records the last on-device transcription and downgrades the automatic
   /// pick when the ratio says the machine cannot keep up. Returns true when
@@ -214,6 +225,27 @@ class AppSettings {
     return true;
   }
 
+  /// The GGUF at [failed] would not load. Medium and large are the same 4B
+  /// file, so the only lighter weights are the 2B — a one-step cap would
+  /// load the file that just failed. Manual picks are left alone. Returns
+  /// true when the auto pick actually moved to a different file.
+  bool applyLlmLoadFailure(LlmModelSize failed) {
+    if (!autoLlm) {
+      return false;
+    }
+    final failedFile = ModelCatalog.llm(failed).file.fileName;
+    if (failedFile == ModelCatalog.llmSmall.file.fileName) {
+      return false;
+    }
+    // A speed cap may already point at the 2B while this attempt is still
+    // holding the 4B file. If the next pick would open that same file,
+    // force the 2B; otherwise the caller can retry immediately.
+    if (ModelCatalog.llm(_autoLlmPick()).file.fileName == failedFile) {
+      llmCap = LlmModelSize.small;
+    }
+    return ModelCatalog.llm(effectiveLlmSize).file.fileName != failedFile;
+  }
+
   SummarizerKind summarizer;
   TranscriberKind transcriber;
   String cloudProviderId;
@@ -222,6 +254,11 @@ class AppSettings {
   String cloudChatModel;
   String cloudTranscribeModel;
   bool deleteAudioAfterTranscribe;
+
+  /// Live captions while recording. Off skips the on-device speech model
+  /// until the lecture stops; the finished recording is still transcribed.
+  /// Cloud transcription ignores this — there is nothing to show live.
+  bool liveCaptions;
 
   /// Which brief sections the teacher wants. Ids are matched against
   /// [BriefSectionCatalog] at use time, so an id from a retired block is
@@ -251,10 +288,11 @@ class AppSettings {
       summarizer == SummarizerKind.cloud ||
       transcriber == TranscriberKind.cloud;
 
-  /// Live captions need the on-device model. Cloud transcription happens
-  /// after the lecture, on the finished file, so there is nothing to show
-  /// while recording.
-  bool get liveCaptionsEnabled => transcriber == TranscriberKind.local;
+  /// Live captions need the on-device model, and the teacher can turn them
+  /// off. Cloud transcription happens after the lecture, on the finished
+  /// file, so there is nothing to show while recording.
+  bool get liveCaptionsEnabled =>
+      transcriber == TranscriberKind.local && liveCaptions;
 
   /// Copies the preset's URL and model ids over the current values. Custom
   /// keeps whatever the teacher typed.
@@ -280,6 +318,7 @@ class AppSettings {
   static const _chatModel = 'cloudChatModel';
   static const _asrModel = 'cloudTranscribeModel';
   static const _del = 'deleteAudioAfterTranscribe';
+  static const _liveCaptions = 'liveCaptions';
   static const _autoUpdate = 'autoUpdate';
   static const _briefSections = 'briefSectionIds';
   static const _cpuScore = 'cpuScoreMbs';
@@ -293,6 +332,13 @@ class AppSettings {
   static const _llmTokKey = 'llmTokBenchKey';
   static const _gpuBackend = 'gpuBackendName';
   static const _llmGpu = 'llmGpuOffload';
+
+  /// Below this much RAM the auto brief pick stays on the 2B file. The 4B
+  /// weights are ~2.7 GB and have to sit beside the OS; a 4 GB phone or a
+  /// small Waydroid container cannot load them (the brief then failed with
+  /// the plugin's raw `ModelLoadException`). 6 GB phones report a bit under
+  /// 6 GiB and must stay on the 4B, so the line is 5 GiB.
+  static const llmMediumMinRamMb = 5 * 1024;
 
   /// Below this decode speed the auto brief pick steps down. Anchored in
   /// measured devices ([LlmSpeedProbe]): a known-good desktop measures ~5
@@ -330,6 +376,7 @@ class AppSettings {
         cloudChatModel: p.getString(_chatModel),
         cloudTranscribeModel: p.getString(_asrModel),
         deleteAudioAfterTranscribe: p.getBool(_del) ?? false,
+        liveCaptions: p.getBool(_liveCaptions) ?? true,
         autoUpdate: p.getBool(_autoUpdate) ?? true,
         briefSectionIds: p.getString(_briefSections)?.split(','),
       )
@@ -366,6 +413,7 @@ class AppSettings {
     await p.setString(_chatModel, cloudChatModel);
     await p.setString(_asrModel, cloudTranscribeModel);
     await p.setBool(_del, deleteAudioAfterTranscribe);
+    await p.setBool(_liveCaptions, liveCaptions);
     await p.setBool(_autoUpdate, autoUpdate);
     await p.setString(_briefSections, briefSectionIds.join(','));
     final score = cpuScoreMbs;

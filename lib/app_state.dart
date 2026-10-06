@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:llm_llamacpp/llm_llamacpp.dart' show BackendDetector;
+import 'package:llm_llamacpp/llm_llamacpp.dart'
+    show BackendDetector, ContextCreationException, ModelLoadException;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:record/record.dart';
@@ -24,6 +25,8 @@ import 'perf/llm_speed_probe.dart';
 import 'summarize/brief_pipeline.dart' show BriefCancelled;
 import 'summarize/cloud_summarizer.dart';
 import 'summarize/local_summarizer.dart';
+import 'summarize/model_load_failure.dart';
+import 'summarize/newsletter.dart';
 import 'summarize/summarizer.dart';
 import 'update/update_feed.dart';
 import 'update/update_installer.dart';
@@ -87,7 +90,9 @@ class LectureAppState extends ChangeNotifier {
   }
 
   Future<void> _reconcileInterrupted() async {
-    final stranded = sessions.where((e) => _inProgress.contains(e.status)).toList();
+    final stranded = sessions
+        .where((e) => _inProgress.contains(e.status))
+        .toList();
     if (stranded.isEmpty) {
       return;
     }
@@ -212,6 +217,7 @@ class LectureAppState extends ChangeNotifier {
 
   Future<void> init() async {
     settings = await AppSettings.load();
+    settings.ramTotalMb = DeviceBench.ramTotalMb();
     sessions = await store.list();
     await _reconcileInterrupted();
     await refreshModelFlags();
@@ -554,7 +560,9 @@ class LectureAppState extends ChangeNotifier {
       notifyListeners();
 
       try {
-        final flushed = settings.liveCaptionsEnabled ? await asr.flushLive() : '';
+        final flushed = settings.liveCaptionsEnabled
+            ? await asr.flushLive()
+            : '';
         // The engine's flush is the live text as this run of the app heard it,
         // and it wins. A lecture that did not get this far -- the app was
         // killed mid-recording, the flush failed, the engine never started --
@@ -655,49 +663,20 @@ class LectureAppState extends ChangeNotifier {
         notifyListeners();
       }
 
-      final Summarizer summarizer;
-      if (settings.summarizer == SummarizerKind.cloud) {
-        summarizer = CloudSummarizer(
-          config: CloudConfig.fromSettings(settings),
-          onProgress: briefProgress,
-          specs: settings.briefSpecs,
-        );
-      } else {
-        final size = settings.effectiveLlmSize;
-        phase('hämtar modell');
-        final modelPath = await downloader.ensureLlm(
-          size: size,
-          onProgress: _onDownload,
-        );
-        downloadProgress = null;
-        // The probe may step the tier down for what settings say and for
-        // the NEXT brief+download, but this run keeps the spec that matches
-        // the file already on the device.
-        final spec = ModelCatalog.llm(size);
-        phase('mäter hastighet');
-        await _speedProbeLlm(size, modelPath);
-        phase('laddar modell');
-        summarizer = LocalLlmSummarizer(
-          modelPath: modelPath,
-          spec: spec,
-          onProgress: briefProgress,
-          specs: settings.briefSpecsFor(size),
-          gpuLayers: settings.llmGpuOffload == null
-              ? null
-              : (settings.llmGpuOffload! ? 99 : 0),
-        );
-      }
-
-      // Set before the first decode so a cancel that arrives during the
-      // question-building phase is not lost.
-      _runningBrief = summarizer;
       try {
-        phase('skriver underlag');
-        final started = Stopwatch()..start();
-        session.summary = await summarizer.summarize(transcript);
-        started.stop();
-        if (settings.summarizer == SummarizerKind.local) {
-          await _calibrateLlm(transcript.length, started.elapsedMilliseconds);
+        if (settings.summarizer == SummarizerKind.cloud) {
+          final summarizer = CloudSummarizer(
+            config: CloudConfig.fromSettings(settings),
+            onProgress: briefProgress,
+            specs: settings.briefSpecs,
+          );
+          // Set before the first decode so a cancel that arrives during the
+          // question-building phase is not lost.
+          _runningBrief = summarizer;
+          phase('skriver underlag');
+          session.summary = await summarizer.summarize(transcript);
+        } else {
+          session.summary = await _localBrief(transcript, phase, briefProgress);
         }
         session.error = null;
       } on BriefCancelled {
@@ -717,6 +696,95 @@ class LectureAppState extends ChangeNotifier {
         sessions = await store.list();
       }
     });
+  }
+
+  /// Local brief, with two recoveries when the GGUF will not load: GPU off
+  /// (a card that cannot hold the weights), then the 2B file. Medium and
+  /// large are the same 4B GGUF, so stepping one tier would load the file
+  /// that just failed. A manual pick is not rewritten.
+  Future<NewsletterSummary> _localBrief(
+    String transcript,
+    void Function(String what) phase,
+    void Function(int done, int total) briefProgress,
+  ) async {
+    var forceCpu = false;
+    var steppedDown = false;
+    while (true) {
+      final size = settings.effectiveLlmSize;
+      phase('hämtar modell');
+      final modelPath = await downloader.ensureLlm(
+        size: size,
+        onProgress: _onDownload,
+      );
+      downloadProgress = null;
+      // The probe may step the tier down for the NEXT brief. This attempt
+      // still opens the file already chosen above; a load failure below is
+      // what changes the file for a retry.
+      final spec = ModelCatalog.llm(size);
+      phase('mäter hastighet');
+      await _speedProbeLlm(size, modelPath);
+      phase('laddar modell');
+      final gpuLayers = forceCpu
+          ? 0
+          : (settings.llmGpuOffload == null
+                ? null
+                : (settings.llmGpuOffload! ? 99 : 0));
+      final summarizer = LocalLlmSummarizer(
+        modelPath: modelPath,
+        spec: spec,
+        onProgress: briefProgress,
+        specs: settings.briefSpecsFor(size),
+        gpuLayers: gpuLayers,
+      );
+      _runningBrief = summarizer;
+      try {
+        phase('skriver underlag');
+        final started = Stopwatch()..start();
+        final summary = await summarizer.summarize(transcript);
+        started.stop();
+        await _calibrateLlm(transcript.length, started.elapsedMilliseconds);
+        if (steppedDown) {
+          notice(
+            'Underlaget skrevs med den mindre språkmodellen. '
+            'Den större fick inte plats på enheten.',
+          );
+        }
+        return summary;
+      } on BriefCancelled {
+        rethrow;
+      } on ModelLoadException {
+        // Fall through to the recoveries.
+      } on ContextCreationException {
+        // Same recoveries: the weights loaded, the window did not fit.
+      }
+
+      final usedGpu = (gpuLayers ?? gpuLayersFor(size)) > 0;
+      if (usedGpu && !forceCpu) {
+        forceCpu = true;
+        settings.llmGpuOffload = false;
+        await settings.save();
+        statusMessage =
+            'Grafikkortet kunde inte ladda modellen. Försöker på processorn…';
+        notifyListeners();
+        continue;
+      }
+      if (!steppedDown && settings.applyLlmLoadFailure(size)) {
+        steppedDown = true;
+        forceCpu = false;
+        await settings.save();
+        await refreshModelFlags();
+        statusMessage = 'Modellen fick inte plats. Hämtar den mindre…';
+        notifyListeners();
+        continue;
+      }
+      final suggestSmaller =
+          !settings.autoLlm &&
+          ModelCatalog.llm(size).file.fileName !=
+              ModelCatalog.llmSmall.file.fileName;
+      throw ModelLoadFailure(
+        modelLoadFailureText(suggestSmaller: suggestSmaller),
+      );
+    }
   }
 
   /// A short, fixed decode right after the model is on the device — the

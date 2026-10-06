@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
+import '../../models/model_catalog.dart';
+import 'record_caption.dart';
 import '../../ui/soft_buttons.dart';
 import '../../ui/soft_dates.dart';
 import '../../ui/soft_icons.dart';
@@ -90,7 +92,12 @@ class _RecordPageState extends State<RecordPage> {
                   ),
                   const SizedBox(height: SoftSpace.sm),
                   Text(
-                    _bodyText(live: live, captions: captions),
+                    recordCaptionBody(
+                      live: live,
+                      cloud:
+                          state.settings.transcriber == TranscriberKind.cloud,
+                      captions: captions,
+                    ),
                     style: theme.textTheme.bodyLarge,
                   ),
                 ],
@@ -100,19 +107,5 @@ class _RecordPageState extends State<RecordPage> {
         ),
       ),
     );
-  }
-
-  /// Cloud transcription runs on the finished file, so there is nothing to
-  /// show while the lecture is still going.
-  static String _bodyText({required bool live, required String captions}) {
-    if (!live) {
-      return 'Molnet transkriberar efter lektionen. Staplarna ovan rör sig '
-          'när mikrofonen hör dig.';
-    }
-    if (captions.isEmpty) {
-      return 'Texten dyker upp när något sagts. Staplarna ovan rör sig när '
-          'mikrofonen hör dig.';
-    }
-    return captions;
   }
 }
