@@ -6,6 +6,14 @@ release live under Unreleased.
 
 ## Unreleased
 
+## 1.0.3 (2026-10)
+
+- Live text during a recording can be turned off. The lecture is still
+  transcribed after stop. (#13)
+- If the 4B brief model cannot load, the app retries on the processor and
+  then with the 2B model, and the failure is explained in Swedish instead
+  of a raw file path. A model chosen by hand is left as it is. (#12)
+
 ## 1.0.2 (2026-10)
 
 - **A killed recording no longer loses the lecture.** The audio was on disk

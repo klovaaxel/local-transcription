@@ -118,6 +118,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: SoftSpace.lg),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
+                    title: const Text('Live-text under inspelning'),
+                    subtitle: const Text(
+                      'Av på en långsam enhet, eller när den inte behövs. '
+                      'Ljudet transkriberas ändå när du stoppar.',
+                    ),
+                    value: settings.liveCaptions,
+                    onChanged: state.busy
+                        ? null
+                        : (value) {
+                            setState(() => settings.liveCaptions = value);
+                            state.saveSettings();
+                          },
+                  ),
+                  const SizedBox(height: SoftSpace.lg),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Välj talmodell automatiskt'),
                     subtitle: const Text(
                       'På datorn kb-whisper large (bäst svenska), '

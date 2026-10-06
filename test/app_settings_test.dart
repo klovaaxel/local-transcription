@@ -1,74 +1,73 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lecture_local/data/app_settings.dart';
+import 'package:lecture_local/features/record/record_caption.dart';
 import 'package:lecture_local/models/model_catalog.dart';
+import 'package:lecture_local/perf/device_bench.dart';
+import 'package:lecture_local/summarize/model_load_failure.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'llm catalog ships the Qwen3.5 tiers as single-file Q4_K_M GGUFs',
-    () {
+  test('llm catalog ships the Qwen3.5 tiers as single-file Q4_K_M GGUFs', () {
+    expect(
+      ModelCatalog.llm(LlmModelSize.small).file.fileName,
+      'Qwen3.5-2B-Q4_K_M.gguf',
+    );
+    expect(
+      ModelCatalog.llm(LlmModelSize.medium).file.fileName,
+      'Qwen3.5-4B-Q4_K_M.gguf',
+    );
+    expect(
+      ModelCatalog.llmLarge.files,
+      hasLength(1),
+      reason: 'every Qwen3.5 GGUF is a single file, not the old two-shard 7B',
+    );
+    expect(ModelCatalog.llmLarge.shards, isEmpty);
+    for (final size in LlmModelSize.values) {
       expect(
-        ModelCatalog.llm(LlmModelSize.small).file.fileName,
-        'Qwen3.5-2B-Q4_K_M.gguf',
+        ModelCatalog.llm(size).file.url,
+        startsWith('https://huggingface.co/unsloth/Qwen3.5-'),
+        reason: 'every tier comes from its unsloth GGUF repo',
       );
-      expect(
-        ModelCatalog.llm(LlmModelSize.medium).file.fileName,
-        'Qwen3.5-4B-Q4_K_M.gguf',
-      );
-      expect(
-        ModelCatalog.llmLarge.files,
-        hasLength(1),
-        reason: 'every Qwen3.5 GGUF is a single file, not the old two-shard 7B',
-      );
-      expect(ModelCatalog.llmLarge.shards, isEmpty);
-      for (final size in LlmModelSize.values) {
-        expect(
-          ModelCatalog.llm(size).file.url,
-          startsWith('https://huggingface.co/unsloth/Qwen3.5-'),
-          reason: 'every tier comes from its unsloth GGUF repo',
-        );
-      }
-      expect(
-        ModelCatalog.llmLarge.contextSize,
-        greaterThan(ModelCatalog.llmSmall.contextSize),
-      );
-      expect(
-        ModelCatalog.llmMedium.contextSize,
-        lessThan(ModelCatalog.llmLarge.contextSize),
-        reason:
-            'the tiers differ by window, not by weights — the large tier only '
-            'earns its name if it fits a whole lecture in one chunk',
-      );
-    },
-  );
+    }
+    expect(
+      ModelCatalog.llmLarge.contextSize,
+      greaterThan(ModelCatalog.llmSmall.contextSize),
+    );
+    expect(
+      ModelCatalog.llmMedium.contextSize,
+      lessThan(ModelCatalog.llmLarge.contextSize),
+      reason:
+          'the tiers differ by window, not by weights — the large tier only '
+          'earns its name if it fits a whole lecture in one chunk',
+    );
+  });
 
-  test(
-    'no shipped tier is large enough to fail on a 6 GB card',
-    () {
-      // The Qwen3.5-9B was measured and rejected: 5.68 GB could not get a
-      // context at all on a 6 GB laptop GPU, and the smaller IQ3 rung that
-      // did fit crashed in prefill. These are the guard against a future tier
-      // swap reintroducing a model that cannot load — a test that merely
-      // mirrored the catalog's filenames could not catch that.
-      for (final size in LlmModelSize.values) {
-        final spec = ModelCatalog.llm(size);
-        expect(
-          spec.contextSize,
-          lessThanOrEqualTo(16384),
-          reason: '${spec.label}: batchSize mirrors contextSize, and the KV '
-              'cache has to fit beside the weights on a small card',
-        );
-        expect(
-          spec.label,
-          isNot(contains('9B')),
-          reason: 'the 9B tier was measured unloadable or uncrashable on 6 GB '
-              'hardware — see the llmLarge doc comment',
-        );
-      }
-    },
-  );
+  test('no shipped tier is large enough to fail on a 6 GB card', () {
+    // The Qwen3.5-9B was measured and rejected: 5.68 GB could not get a
+    // context at all on a 6 GB laptop GPU, and the smaller IQ3 rung that
+    // did fit crashed in prefill. These are the guard against a future tier
+    // swap reintroducing a model that cannot load — a test that merely
+    // mirrored the catalog's filenames could not catch that.
+    for (final size in LlmModelSize.values) {
+      final spec = ModelCatalog.llm(size);
+      expect(
+        spec.contextSize,
+        lessThanOrEqualTo(16384),
+        reason:
+            '${spec.label}: batchSize mirrors contextSize, and the KV '
+            'cache has to fit beside the weights on a small card',
+      );
+      expect(
+        spec.label,
+        isNot(contains('9B')),
+        reason:
+            'the 9B tier was measured unloadable or uncrashable on 6 GB '
+            'hardware — see the llmLarge doc comment',
+      );
+    }
+  });
 
   test('auto model pick: 4B on phones, wide window on desktop', () {
     expect(
@@ -227,6 +226,108 @@ void main() {
     final settings = AppSettings(transcriber: TranscriberKind.cloud);
     expect(settings.liveCaptionsEnabled, isFalse);
     expect(settings.usesCloud, isTrue);
+  });
+
+  test('live captions can be turned off without leaving the device', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings()..liveCaptions = false;
+    expect(settings.liveCaptionsEnabled, isFalse);
+    expect(settings.usesCloud, isFalse);
+    await settings.save();
+
+    final loaded = await AppSettings.load();
+    expect(loaded.liveCaptions, isFalse);
+    expect(loaded.liveCaptionsEnabled, isFalse);
+
+    // Cloud still wins if the teacher later opts in: the preference is
+    // kept, but there is nothing to show while recording.
+    loaded.transcriber = TranscriberKind.cloud;
+    expect(loaded.liveCaptionsEnabled, isFalse);
+  });
+
+  test('an old install without a live-caption key keeps them on', () async {
+    SharedPreferences.setMockInitialValues({'asrSize': 'medium'});
+    final loaded = await AppSettings.load();
+    expect(loaded.liveCaptions, isTrue);
+    expect(loaded.liveCaptionsEnabled, isTrue);
+  });
+
+  test('low RAM keeps the auto brief on the 2B file', () {
+    final tight = AppSettings()..ramTotalMb = 4096;
+    expect(tight.effectiveLlmSize, LlmModelSize.small);
+
+    final roomy = AppSettings()..ramTotalMb = 8192;
+    expect(roomy.effectiveLlmSize, LlmModelSize.large);
+
+    final manual = AppSettings(autoLlm: false, llmSize: LlmModelSize.large)
+      ..ramTotalMb = 2048;
+    expect(
+      manual.effectiveLlmSize,
+      LlmModelSize.large,
+      reason: 'a manual pick wins over the RAM gate',
+    );
+  });
+
+  test('a failed 4B load steps the auto pick onto the 2B file', () {
+    final auto = AppSettings()..ramTotalMb = 8192;
+    expect(auto.applyLlmLoadFailure(LlmModelSize.large), isTrue);
+    expect(auto.effectiveLlmSize, LlmModelSize.small);
+    expect(
+      auto.applyLlmLoadFailure(LlmModelSize.small),
+      isFalse,
+      reason: 'the 2B is the last file; nothing lighter to open',
+    );
+
+    // Medium is the same GGUF as large. One step would reload the failure.
+    final phone = AppSettings()..ramTotalMb = 8192;
+    expect(phone.applyLlmLoadFailure(LlmModelSize.medium), isTrue);
+    expect(
+      ModelCatalog.llm(phone.effectiveLlmSize).file.fileName,
+      ModelCatalog.llmSmall.file.fileName,
+    );
+
+    final manual = AppSettings(autoLlm: false, llmSize: LlmModelSize.medium);
+    expect(manual.applyLlmLoadFailure(LlmModelSize.medium), isFalse);
+    expect(manual.effectiveLlmSize, LlmModelSize.medium);
+  });
+
+  test('meminfo and cgroup parsers', () {
+    expect(
+      meminfoTotalMb('MemTotal:        4023912 kB\nMemFree:  100 kB\n'),
+      3929,
+    );
+    expect(meminfoTotalMb('nope'), isNull);
+    expect(cgroupMemoryLimitMb('max'), isNull);
+    expect(cgroupMemoryLimitMb('${8 * 1024 * 1024 * 1024}'), 8192);
+    expect(cgroupMemoryLimitMb('${1 << 50}'), isNull);
+  });
+
+  test('record screen copy matches where the text will come from', () {
+    expect(
+      recordCaptionBody(live: true, cloud: false, captions: ''),
+      contains('dyker upp'),
+    );
+    expect(
+      recordCaptionBody(live: false, cloud: true, captions: ''),
+      contains('Molnet'),
+    );
+    expect(
+      recordCaptionBody(live: false, cloud: false, captions: ''),
+      contains('transkriberad'),
+    );
+    expect(recordCaptionBody(live: true, cloud: false, captions: 'Hej'), 'Hej');
+  });
+
+  test('a model that will not load is explained in Swedish', () {
+    expect(modelLoadFailureText(suggestSmaller: true), contains('mindre'));
+    expect(
+      modelLoadFailureText(suggestSmaller: true),
+      isNot(contains('/data/')),
+    );
+    expect(
+      ModelLoadFailure(modelLoadFailureText(suggestSmaller: false)).toString(),
+      isNot(contains('ModelLoadException')),
+    );
   });
 
   test('a preset rewrites url and models, a custom provider keeps them', () {

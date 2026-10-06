@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
@@ -19,6 +20,62 @@ abstract final class DeviceBench {
   }) async {
     return Isolate.run(() => _hashThroughput(duration));
   }
+
+  /// Installed RAM in megabytes, or the tighter cgroup limit when the
+  /// process is capped below that (a Waydroid container often is). Null on
+  /// Windows and iOS, and when the files cannot be read — the auto pick
+  /// then keeps the platform default.
+  static int? ramTotalMb() {
+    if (!Platform.isLinux && !Platform.isAndroid) {
+      return null;
+    }
+    int? best;
+    void take(int? value) {
+      if (value == null || value <= 0) {
+        return;
+      }
+      best = best == null || value < best! ? value : best;
+    }
+
+    try {
+      take(meminfoTotalMb(File('/proc/meminfo').readAsStringSync()));
+    } catch (_) {}
+    for (final path in const [
+      '/sys/fs/cgroup/memory.max',
+      '/sys/fs/cgroup/memory/memory.limit_in_bytes',
+    ]) {
+      try {
+        take(cgroupMemoryLimitMb(File(path).readAsStringSync()));
+      } catch (_) {}
+    }
+    return best;
+  }
+}
+
+/// `MemTotal` from `/proc/meminfo`, in megabytes.
+int? meminfoTotalMb(String text) {
+  final match = RegExp(
+    r'^MemTotal:\s+(\d+)\s+kB',
+    multiLine: true,
+  ).firstMatch(text);
+  if (match == null) {
+    return null;
+  }
+  return int.parse(match.group(1)!) ~/ 1024;
+}
+
+/// A cgroup memory limit in megabytes. `"max"` and the v1 unlimited sentinel
+/// mean there is no cap.
+int? cgroupMemoryLimitMb(String text) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty || trimmed == 'max') {
+    return null;
+  }
+  final bytes = int.tryParse(trimmed);
+  if (bytes == null || bytes <= 0 || bytes > 1 << 40) {
+    return null;
+  }
+  return bytes ~/ (1024 * 1024);
 }
 
 double _hashThroughput(Duration duration) {
